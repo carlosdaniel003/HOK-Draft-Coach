@@ -19,11 +19,13 @@ import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 
 class DraftServiceTest {
 
+    private HeroiService heroiService;
     private DraftService draftService;
 
     @BeforeEach
     void configurar() {
-        draftService = new DraftService(new HeroiService());
+        heroiService = new HeroiService();
+        draftService = new DraftService(heroiService);
     }
 
     @Test
@@ -50,9 +52,14 @@ class DraftServiceTest {
             8L, 11L, 14L, 17L,
             9L, 12L, 15L, 1L, 18L
         );
+        long candidatosEsperados = heroiService
+            .listarPorRota(Rota.FARM_LANE)
+            .stream()
+            .filter(heroi -> !idsSelecionados.contains(heroi.getId()))
+            .count();
 
         assertEquals(Rota.FARM_LANE, resposta.rotaAlvo());
-        assertEquals(6, resposta.totalCandidatos());
+        assertEquals(candidatosEsperados, resposta.totalCandidatos());
         assertFalse(resposta.recomendacoes().isEmpty());
         assertTrue(
             resposta.recomendacoes().stream()
