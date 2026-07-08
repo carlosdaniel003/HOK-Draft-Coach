@@ -24,4 +24,4 @@ jobs:
           cache: maven
 
       - name: Compilar e executar testes
-        run: mvn --batch-mode --no-transfer-progress clean test
+        run: mvn --batch-mode --no-transfer-progress --quiet clean test
