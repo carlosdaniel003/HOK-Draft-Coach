@@ -1,112 +1,136 @@
-const ROTAS = [
+const LADOS = {
+    AZUL: {
+        codigo: "AZUL",
+        nome: "Lado azul",
+        prefixo: "B"
+    },
+    VERMELHO: {
+        codigo: "VERMELHO",
+        nome: "Lado vermelho",
+        prefixo: "R"
+    }
+};
+
+const NOMES_ROTAS = {
+    CLASH_LANE: "Clash",
+    JUNGLE: "Jungle",
+    MID_LANE: "Mid",
+    FARM_LANE: "Farm",
+    ROAMING: "Roaming"
+};
+
+const SEQUENCIA_PICKS = [
     {
-        codigo: "CLASH_LANE",
-        nome: "Clash Lane",
-        sigla: "CL"
+        lado: "AZUL",
+        indices: [0],
+        titulo: "Azul escolhe 1",
+        resumo: "B1"
     },
     {
-        codigo: "JUNGLE",
-        nome: "Jungle",
-        sigla: "JG"
+        lado: "VERMELHO",
+        indices: [0, 1],
+        titulo: "Vermelho escolhe 2",
+        resumo: "R1 · R2"
     },
     {
-        codigo: "MID_LANE",
-        nome: "Mid Lane",
-        sigla: "MID"
+        lado: "AZUL",
+        indices: [1, 2],
+        titulo: "Azul escolhe 2",
+        resumo: "B2 · B3"
     },
     {
-        codigo: "FARM_LANE",
-        nome: "Farm Lane",
-        sigla: "ADC"
+        lado: "VERMELHO",
+        indices: [2, 3],
+        titulo: "Vermelho escolhe 2",
+        resumo: "R3 · R4"
     },
     {
-        codigo: "ROAMING",
-        nome: "Roaming",
-        sigla: "SUP"
+        lado: "AZUL",
+        indices: [3, 4],
+        titulo: "Azul escolhe 2",
+        resumo: "B4 · B5"
+    },
+    {
+        lado: "VERMELHO",
+        indices: [4],
+        titulo: "Vermelho escolhe 1",
+        resumo: "R5"
     }
 ];
 
-const ROTAS_POR_CODIGO = Object.fromEntries(
-    ROTAS.map((rota) => [rota.codigo, rota])
-);
-
-const ROTULOS_COMPONENTES = {
-    base: "Base",
-    confronto: "Confronto",
-    sinergia: "Sinergia",
-    composicao: "Composição",
-    respostaAosInimigos: "Resposta",
-    acessibilidade: "Execução"
-};
-
 const estado = {
     herois: [],
-    aliados: Array(5).fill(null),
-    inimigos: Array(5).fill(null),
-    slotAtual: null,
-    analisando: false
+    bans: {
+        AZUL: Array(3).fill(null),
+        VERMELHO: Array(3).fill(null)
+    },
+    picks: {
+        AZUL: Array(5).fill(null),
+        VERMELHO: Array(5).fill(null)
+    },
+    slotAtual: null
 };
-
-const slotsAliados = document.querySelector("#slots-aliados");
-const slotsInimigos = document.querySelector("#slots-inimigos");
-
-const contadorDraft = document.querySelector("#contador-draft");
-const botaoLimpar = document.querySelector("#botao-limpar");
-const botaoAnalisar = document.querySelector("#botao-analisar");
-const rotaAlvoSelect = document.querySelector("#rota-alvo");
 
 const statusApi = document.querySelector("#status-api");
 const statusApiTexto = document.querySelector("#status-api-texto");
+const meuLadoSelect = document.querySelector("#meu-lado");
+const minhaOrdemSelect = document.querySelector("#minha-ordem");
+const botaoLimpar = document.querySelector("#botao-limpar");
 
-const mensagemErro = document.querySelector("#mensagem-erro");
-const estadoInicial = document.querySelector("#estado-inicial");
-const carregamento = document.querySelector("#carregamento");
-const resultadoAnalise = document.querySelector("#resultado-analise");
+const faseDraft = document.querySelector("#fase-draft");
+const proximaAcao = document.querySelector("#proxima-acao");
+const descricaoAcao = document.querySelector("#descricao-acao");
+const progressoAtual = document.querySelector("#progresso-atual");
+const progressoBarra = document.querySelector("#progresso-barra");
+const contadorBans = document.querySelector("#contador-bans");
+const contadorPicks = document.querySelector("#contador-picks");
 
-const rotaAnalisada = document.querySelector("#rota-analisada");
-const versaoDados = document.querySelector("#versao-dados");
-const quantidadeResultados = document.querySelector(
-    "#quantidade-resultados"
+const bansAzul = document.querySelector("#bans-azul");
+const bansVermelho = document.querySelector("#bans-vermelho");
+const picksAzul = document.querySelector("#picks-azul");
+const picksVermelho = document.querySelector("#picks-vermelho");
+const sequenciaPicks = document.querySelector("#sequencia-picks");
+
+const resumoProximaAcao = document.querySelector(
+    "#resumo-proxima-acao"
 );
-const listaRecomendacoes = document.querySelector(
-    "#lista-recomendacoes"
+const resumoProximaDescricao = document.querySelector(
+    "#resumo-proxima-descricao"
 );
-const painelAvisos = document.querySelector("#painel-avisos");
-const listaAvisos = document.querySelector("#lista-avisos");
+const resumoMinhaPosicao = document.querySelector(
+    "#resumo-minha-posicao"
+);
+const listaFlex = document.querySelector("#lista-flex");
+const hipotesesFuncao = document.querySelector("#hipoteses-funcao");
 
 const modalHerois = document.querySelector("#modal-herois");
 const modalOverlay = document.querySelector("#modal-overlay");
+const modalEtiqueta = document.querySelector("#modal-etiqueta");
+const modalTitulo = document.querySelector("#modal-titulo");
+const modalDescricao = document.querySelector("#modal-descricao");
 const botaoFecharModal = document.querySelector(
     "#botao-fechar-modal"
 );
 const botaoRemoverHeroi = document.querySelector(
     "#botao-remover-heroi"
 );
-const modalTitulo = document.querySelector("#modal-titulo");
-const modalDescricao = document.querySelector("#modal-descricao");
 const pesquisaHeroi = document.querySelector("#pesquisa-heroi");
+const filtroRota = document.querySelector("#filtro-rota");
 const listaHeroisModal = document.querySelector(
     "#lista-herois-modal"
 );
 
 document.addEventListener("DOMContentLoaded", iniciarAplicacao);
 
-botaoLimpar.addEventListener("click", limparDraft);
-botaoAnalisar.addEventListener("click", analisarDraft);
-botaoRemoverHeroi.addEventListener("click", removerHeroiAtual);
-
-rotaAlvoSelect.addEventListener("change", () => {
-    limparErro();
-    limparAnaliseAnterior();
-    renderizarDraft();
-});
-
-botaoFecharModal.addEventListener("click", fecharModal);
+botaoLimpar.addEventListener("click", reiniciarDraft);
+meuLadoSelect.addEventListener("change", renderizarTudo);
+minhaOrdemSelect.addEventListener("change", renderizarTudo);
 modalOverlay.addEventListener("click", fecharModal);
+botaoFecharModal.addEventListener("click", fecharModal);
+botaoRemoverHeroi.addEventListener("click", limparSlotAtual);
 
-pesquisaHeroi.addEventListener("input", () => {
-    renderizarHeroisDoModal(pesquisaHeroi.value);
-});
+pesquisaHeroi.addEventListener("input", renderizarHeroisModal);
+filtroRota.addEventListener("change", renderizarHeroisModal);
 
 document.addEventListener("keydown", (evento) => {
     if (evento.key === "Escape") {
@@ -115,8 +139,7 @@ document.addEventListener("keydown", (evento) => {
 });
 
 async function iniciarAplicacao() {
-    renderizarDraft();
-    atualizarBotaoAnalise();
+    renderizarTudo();
 
     await Promise.all([
         verificarStatusApi(),
@@ -147,10 +170,9 @@ async function carregarHerois() {
         }
 
         estado.herois = await resposta.json();
-        atualizarBotaoAnalise();
+        renderizarTudo();
     } catch (erro) {
-        mostrarErro(erro.message);
-        atualizarBotaoAnalise();
+        definirStatusApi(false, "Falha ao carregar heróis");
     }
 }
 
@@ -159,141 +181,228 @@ function definirStatusApi(online, texto) {
     statusApiTexto.textContent = texto;
 }
 
-function renderizarDraft() {
-    slotsAliados.innerHTML = criarSlots("aliados");
-    slotsInimigos.innerHTML = criarSlots("inimigos");
+function renderizarTudo() {
+    const leitura = calcularEstadoDraft();
 
-    adicionarEventosAosSlots();
-    atualizarContador();
+    bansAzul.innerHTML = criarSlotsBan("AZUL", leitura);
+    bansVermelho.innerHTML = criarSlotsBan("VERMELHO", leitura);
+    picksAzul.innerHTML = criarSlotsPick("AZUL", leitura);
+    picksVermelho.innerHTML = criarSlotsPick("VERMELHO", leitura);
+    sequenciaPicks.innerHTML = criarSequenciaPicks(leitura);
+
+    registrarEventosSlots();
+    renderizarEstadoGeral(leitura);
+    renderizarMinhaPosicao();
+    renderizarLeituraFlex();
+    renderizarHipotesesFuncao();
 }
 
-function criarSlots(equipe) {
-    const rotaAlvo = rotaAlvoSelect.value;
+function criarSlotsBan(lado, leitura) {
+    return estado.bans[lado]
+        .map((heroi, indice) => {
+            const preenchido = Boolean(heroi);
+            const ativo = leitura.fase === "BANS" && !preenchido;
 
-    return ROTAS.map((rota, indice) => {
-        const heroi = estado[equipe][indice];
-        const preenchido = Boolean(heroi);
-        const slotAlvo =
-            equipe === "aliados" && rota.codigo === rotaAlvo;
-        const alvoVazio = slotAlvo && !preenchido;
-        const alvoPreenchido = slotAlvo && preenchido;
-
-        return `
-            <button
-                class="
-                    slot-heroi
-                    ${preenchido ? "slot-heroi--preenchido" : ""}
-                    ${alvoVazio ? "slot-heroi--alvo" : ""}
-                    ${alvoPreenchido ? "slot-heroi--alvo-invalido" : ""}
-                "
-                type="button"
-                data-equipe="${equipe}"
-                data-indice="${indice}"
-                title="Selecionar herói para ${rota.nome}"
-            >
-                <span class="slot-heroi__icone">
-                    ${
-                        preenchido
-                            ? obterIniciais(heroi.nome)
-                            : rota.sigla
-                    }
-                </span>
-
-                <span class="slot-heroi__conteudo">
-                    <span class="slot-heroi__rota">
-                        ${rota.nome}
+            return `
+                <button
+                    class="
+                        slot-ban
+                        ${preenchido ? "slot-ban--preenchido" : ""}
+                        ${ativo ? "slot-ban--ativo" : ""}
+                    "
+                    type="button"
+                    data-tipo="BAN"
+                    data-lado="${lado}"
+                    data-indice="${indice}"
+                >
+                    <span class="slot-ban__ordem">
+                        Ban ${indice + 1}
                     </span>
 
-                    <span class="slot-heroi__nome">
+                    <span class="slot-ban__nome">
                         ${
                             preenchido
                                 ? escaparHtml(heroi.nome)
-                                : alvoVazio
-                                    ? "Slot da recomendação"
-                                    : "Selecionar herói"
+                                : "Selecionar ban"
                         }
                     </span>
-                </span>
-
-                <span class="slot-heroi__acao">
-                    ${
-                        alvoVazio
-                            ? "ALVO"
-                            : preenchido
-                                ? "↻"
-                                : "+"
-                    }
-                </span>
-            </button>
-        `;
-    }).join("");
+                </button>
+            `;
+        })
+        .join("");
 }
 
-function adicionarEventosAosSlots() {
+function criarSlotsPick(lado, leitura) {
+    const meuLado = meuLadoSelect.value;
+    const minhaOrdem = Number(minhaOrdemSelect.value);
+
+    return estado.picks[lado]
+        .map((heroi, indice) => {
+            const preenchido = Boolean(heroi);
+            const ativo = slotPertenceRodadaAtual(
+                lado,
+                indice,
+                leitura
+            );
+            const meuSlot =
+                meuLado === lado && minhaOrdem === indice + 1;
+            const rodadaSlot = buscarRodadaDoSlot(lado, indice);
+            const bloqueado =
+                leitura.fase === "BANS"
+                || (
+                    leitura.fase === "PICKS"
+                    && rodadaSlot > leitura.indiceRodadaAtual
+                    && !preenchido
+                );
+
+            return `
+                <button
+                    class="
+                        slot-pick
+                        ${preenchido ? "slot-pick--preenchido" : ""}
+                        ${ativo ? "slot-pick--ativo" : ""}
+                        ${meuSlot ? "slot-pick--meu" : ""}
+                        ${bloqueado ? "slot-pick--bloqueado" : ""}
+                    "
+                    type="button"
+                    data-tipo="PICK"
+                    data-lado="${lado}"
+                    data-indice="${indice}"
+                >
+                    <span class="slot-pick__numero">
+                        ${LADOS[lado].prefixo}${indice + 1}
+                    </span>
+
+                    <span class="slot-pick__conteudo">
+                        <span class="slot-pick__ordem">
+                            Jogador ${indice + 1}
+                            · Rodada ${rodadaSlot + 1}
+                        </span>
+
+                        <span class="slot-pick__nome">
+                            ${
+                                preenchido
+                                    ? escaparHtml(heroi.nome)
+                                    : ativo
+                                        ? "Escolha atual"
+                                        : "Aguardando pick"
+                            }
+                        </span>
+
+                        ${
+                            preenchido
+                                ? criarChipsRotas(heroi)
+                                : ""
+                        }
+                    </span>
+
+                    <span class="slot-pick__acao">
+                        ${preenchido ? "↻" : "+"}
+                    </span>
+                </button>
+            `;
+        })
+        .join("");
+}
+
+function criarSequenciaPicks(leitura) {
+    return SEQUENCIA_PICKS
+        .map((rodada, indice) => {
+            const concluida = rodadaConcluida(indice);
+            const ativa =
+                leitura.fase === "PICKS"
+                && leitura.indiceRodadaAtual === indice;
+
+            return `
+                <article
+                    class="
+                        rodada-pick
+                        rodada-pick--${rodada.lado.toLowerCase()}
+                        ${ativa ? "rodada-pick--ativa" : ""}
+                        ${concluida ? "rodada-pick--concluida" : ""}
+                    "
+                >
+                    <span class="rodada-pick__numero">
+                        ${indice + 1}
+                    </span>
+
+                    <div class="rodada-pick__texto">
+                        <strong>${rodada.titulo}</strong>
+                        <span>${rodada.resumo}</span>
+                    </div>
+                </article>
+            `;
+        })
+        .join("");
+}
+
+function registrarEventosSlots() {
     document
-        .querySelectorAll(".slot-heroi")
+        .querySelectorAll("[data-tipo][data-lado][data-indice]")
         .forEach((slot) => {
             slot.addEventListener("click", () => {
-                const equipe = slot.dataset.equipe;
-                const indice = Number(slot.dataset.indice);
-
-                abrirModal(equipe, indice);
+                abrirModal(
+                    slot.dataset.tipo,
+                    slot.dataset.lado,
+                    Number(slot.dataset.indice)
+                );
             });
         });
 }
 
-function abrirModal(equipe, indice) {
+function abrirModal(tipo, lado, indice) {
     estado.slotAtual = {
-        equipe,
+        tipo,
+        lado,
         indice
     };
 
-    const rota = ROTAS[indice];
-    const heroiAtual = estado[equipe][indice];
-    const nomeEquipe =
-        equipe === "aliados"
-            ? "Equipe aliada"
-            : "Equipe inimiga";
+    const heroiAtual = obterHeroiSlot(tipo, lado, indice);
+    const codigoSlot =
+        tipo === "BAN"
+            ? `Ban ${indice + 1}`
+            : `${LADOS[lado].prefixo}${indice + 1}`;
 
-    modalTitulo.textContent = rota.nome;
-
+    modalEtiqueta.textContent =
+        tipo === "BAN" ? "Registrar ban" : "Registrar pick";
+    modalTitulo.textContent = `${LADOS[lado].nome} · ${codigoSlot}`;
     modalDescricao.textContent =
-        `${nomeEquipe} · Escolha entre os heróis de ${rota.nome}.`;
+        tipo === "BAN"
+            ? "Escolha o herói removido por este lado."
+            : "A função ainda não é fixa. Heróis flex exibem todas as possibilidades conhecidas.";
 
     pesquisaHeroi.value = "";
+    filtroRota.value = "";
+    botaoRemoverHeroi.classList.toggle("oculto", !heroiAtual);
 
-    botaoRemoverHeroi.classList.toggle(
-        "oculto",
-        !heroiAtual
-    );
-
-    renderizarHeroisDoModal();
+    renderizarHeroisModal();
 
     modalHerois.classList.remove("oculto");
     modalHerois.setAttribute("aria-hidden", "false");
-
     pesquisaHeroi.focus();
 }
 
 function fecharModal() {
     modalHerois.classList.add("oculto");
     modalHerois.setAttribute("aria-hidden", "true");
-
     estado.slotAtual = null;
 }
 
-function renderizarHeroisDoModal(filtro = "") {
+function renderizarHeroisModal() {
     if (!estado.slotAtual) {
         return;
     }
 
-    const termo = normalizarTexto(filtro);
-    const rota = ROTAS[estado.slotAtual.indice];
+    const termo = normalizarTexto(pesquisaHeroi.value);
+    const rotaFiltrada = filtroRota.value;
 
-    const heroisFiltrados = estado.herois
-        .filter((heroi) => heroi.rota === rota.codigo)
+    const heroisFiltrados = [...estado.herois]
         .filter((heroi) =>
             normalizarTexto(heroi.nome).includes(termo)
+        )
+        .filter((heroi) =>
+            !rotaFiltrada
+            || obterRotasHeroi(heroi).includes(rotaFiltrada)
         )
         .sort((heroiA, heroiB) =>
             heroiA.nome.localeCompare(heroiB.nome, "pt-BR")
@@ -302,41 +411,33 @@ function renderizarHeroisDoModal(filtro = "") {
     if (heroisFiltrados.length === 0) {
         listaHeroisModal.innerHTML = `
             <div class="sem-resultados">
-                Nenhum herói de ${escaparHtml(rota.nome)} encontrado.
+                Nenhum herói encontrado com os filtros atuais.
             </div>
         `;
-
         return;
     }
 
     listaHeroisModal.innerHTML = heroisFiltrados
         .map((heroi) => {
-            const selecionadoEmOutroSlot =
-                heroiSelecionadoEmOutroSlot(heroi.id);
-
-            const atributos = heroi.atributos
-                ? `Controle ${heroi.atributos.controle} · `
-                    + `Mobilidade ${heroi.atributos.mobilidade}`
-                : heroi.estilo;
+            const indisponivel = heroiEstaEmOutroSlot(heroi.id);
+            const flex = obterRotasHeroi(heroi).length > 1;
 
             return `
                 <button
-                    class="heroi-opcao"
+                    class="
+                        heroi-opcao
+                        ${flex ? "heroi-opcao--flex" : ""}
+                    "
                     type="button"
                     data-heroi-id="${heroi.id}"
-                    ${selecionadoEmOutroSlot ? "disabled" : ""}
+                    ${indisponivel ? "disabled" : ""}
                 >
-                    <strong>
-                        ${escaparHtml(heroi.nome)}
-                    </strong>
+                    <strong>${escaparHtml(heroi.nome)}</strong>
+                    <span>${escaparHtml(heroi.estilo)}</span>
 
-                    <span>
-                        ${escaparHtml(heroi.estilo)}
-                    </span>
-
-                    <small>
-                        ${escaparHtml(atributos)}
-                    </small>
+                    <div class="heroi-opcao__rotas">
+                        ${criarChipsRotas(heroi, true)}
+                    </div>
                 </button>
             `;
         })
@@ -346,9 +447,7 @@ function renderizarHeroisDoModal(filtro = "") {
         .querySelectorAll(".heroi-opcao:not(:disabled)")
         .forEach((botao) => {
             botao.addEventListener("click", () => {
-                const heroiId = Number(botao.dataset.heroiId);
-
-                selecionarHeroi(heroiId);
+                selecionarHeroi(Number(botao.dataset.heroiId));
             });
         });
 }
@@ -363,345 +462,305 @@ function selecionarHeroi(heroiId) {
     );
 
     if (!heroi) {
-        mostrarErro("O herói selecionado não foi encontrado.");
         return;
     }
 
-    const { equipe, indice } = estado.slotAtual;
-    const rota = ROTAS[indice];
+    const { tipo, lado, indice } = estado.slotAtual;
+    const colecao = tipo === "BAN" ? estado.bans : estado.picks;
 
-    if (heroi.rota !== rota.codigo) {
-        mostrarErro(
-            `${heroi.nome} não está cadastrado para ${rota.nome}.`
-        );
-        return;
-    }
-
-    estado[equipe][indice] = heroi;
+    colecao[lado][indice] = heroi;
 
     fecharModal();
-    renderizarDraft();
-    limparAnaliseAnterior();
-    limparErro();
+    renderizarTudo();
 }
 
-function removerHeroiAtual() {
+function limparSlotAtual() {
     if (!estado.slotAtual) {
         return;
     }
 
-    const { equipe, indice } = estado.slotAtual;
+    const { tipo, lado, indice } = estado.slotAtual;
+    const colecao = tipo === "BAN" ? estado.bans : estado.picks;
 
-    estado[equipe][indice] = null;
+    colecao[lado][indice] = null;
 
     fecharModal();
-    renderizarDraft();
-    limparAnaliseAnterior();
-    limparErro();
+    renderizarTudo();
 }
 
-function heroiSelecionadoEmOutroSlot(heroiId) {
+function obterHeroiSlot(tipo, lado, indice) {
+    const colecao = tipo === "BAN" ? estado.bans : estado.picks;
+    return colecao[lado][indice];
+}
+
+function heroiEstaEmOutroSlot(heroiId) {
     const atual = estado.slotAtual;
 
-    return ["aliados", "inimigos"].some((equipe) =>
-        estado[equipe].some((heroi, indice) => {
-            if (!heroi) {
-                return false;
-            }
+    const slots = [
+        ...listarSlots("BAN", "AZUL"),
+        ...listarSlots("BAN", "VERMELHO"),
+        ...listarSlots("PICK", "AZUL"),
+        ...listarSlots("PICK", "VERMELHO")
+    ];
 
-            const mesmoSlot =
-                atual
-                && atual.equipe === equipe
-                && atual.indice === indice;
-
-            return !mesmoSlot
-                && Number(heroi.id) === Number(heroiId);
-        })
-    );
-}
-
-function limparDraft() {
-    estado.aliados = Array(5).fill(null);
-    estado.inimigos = Array(5).fill(null);
-
-    limparErro();
-    renderizarDraft();
-    limparAnaliseAnterior();
-}
-
-function limparAnaliseAnterior() {
-    carregamento.classList.add("oculto");
-    resultadoAnalise.classList.add("oculto");
-    estadoInicial.classList.remove("oculto");
-
-    listaRecomendacoes.innerHTML = "";
-    listaAvisos.innerHTML = "";
-    painelAvisos.classList.add("oculto");
-
-    rotaAnalisada.textContent = "—";
-    versaoDados.textContent = "—";
-    quantidadeResultados.textContent = "0 recomendações";
-}
-
-function atualizarContador() {
-    const quantidade = [
-        ...estado.aliados,
-        ...estado.inimigos
-    ].filter(Boolean).length;
-
-    contadorDraft.textContent =
-        `${quantidade} de 10 escolhas`;
-}
-
-async function analisarDraft() {
-    limparErro();
-
-    const rotaAlvo = rotaAlvoSelect.value;
-    const indiceRotaAlvo = ROTAS.findIndex(
-        (rota) => rota.codigo === rotaAlvo
-    );
-
-    if (indiceRotaAlvo < 0) {
-        mostrarErro("Selecione uma rota válida para a recomendação.");
-        return;
-    }
-
-    if (estado.aliados[indiceRotaAlvo]) {
-        mostrarErro(
-            "O slot aliado da rota recomendada deve permanecer vazio. "
-            + "Remova o herói desse slot ou escolha outra rota."
-        );
-        return;
-    }
-
-    iniciarCarregamento();
-
-    const corpo = {
-        rotaAlvo,
-        aliados: montarEscolhas(estado.aliados),
-        inimigos: montarEscolhas(estado.inimigos)
-    };
-
-    try {
-        const resposta = await fetch("/api/draft/recomendar", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(corpo)
-        });
-
-        if (!resposta.ok) {
-            throw new Error(await extrairMensagemErro(resposta));
+    return slots.some((slot) => {
+        if (!slot.heroi) {
+            return false;
         }
 
-        const analise = await resposta.json();
+        const mesmoSlot =
+            atual
+            && atual.tipo === slot.tipo
+            && atual.lado === slot.lado
+            && atual.indice === slot.indice;
 
-        renderizarAnalise(analise);
-    } catch (erro) {
-        finalizarCarregamento();
-        estadoInicial.classList.remove("oculto");
-        mostrarErro(erro.message);
-    }
+        return !mesmoSlot
+            && Number(slot.heroi.id) === Number(heroiId);
+    });
 }
 
-function montarEscolhas(equipe) {
-    return equipe
-        .map((heroi, indice) => {
-            if (!heroi) {
-                return null;
-            }
+function listarSlots(tipo, lado) {
+    const colecao = tipo === "BAN" ? estado.bans : estado.picks;
 
-            return {
-                rota: ROTAS[indice].codigo,
-                heroiId: Number(heroi.id)
-            };
-        })
-        .filter(Boolean);
+    return colecao[lado].map((heroi, indice) => ({
+        tipo,
+        lado,
+        indice,
+        heroi
+    }));
 }
 
-function iniciarCarregamento() {
-    estado.analisando = true;
-    atualizarBotaoAnalise();
+function calcularEstadoDraft() {
+    const quantidadeBans = contarPreenchidos(estado.bans);
+    const quantidadePicks = contarPreenchidos(estado.picks);
+    const indiceRodadaAtual = encontrarRodadaAtual();
 
-    estadoInicial.classList.add("oculto");
-    resultadoAnalise.classList.add("oculto");
-    carregamento.classList.remove("oculto");
-}
-
-function finalizarCarregamento() {
-    estado.analisando = false;
-    atualizarBotaoAnalise();
-    carregamento.classList.add("oculto");
-}
-
-function atualizarBotaoAnalise() {
-    const bloqueado =
-        estado.analisando || estado.herois.length === 0;
-
-    botaoAnalisar.disabled = bloqueado;
-    botaoAnalisar.textContent = estado.analisando
-        ? "Analisando..."
-        : "Analisar draft";
-}
-
-function renderizarAnalise(analise) {
-    finalizarCarregamento();
-    resultadoAnalise.classList.remove("oculto");
-
-    const rota = ROTAS_POR_CODIGO[analise.rotaAlvo];
-    const recomendacoes = analise.recomendacoes ?? [];
-    const totalCandidatos = analise.totalCandidatos ?? 0;
-
-    rotaAnalisada.textContent = rota?.nome ?? analise.rotaAlvo;
-    versaoDados.textContent = analise.versaoDados ?? "Sem versão";
-
-    quantidadeResultados.textContent =
-        `${recomendacoes.length} recomendações de `
-        + `${totalCandidatos} candidatos`;
-
-    if (recomendacoes.length === 0) {
-        listaRecomendacoes.innerHTML = `
-            <div class="sem-resultados">
-                Nenhum herói disponível para esta rota.
-            </div>
-        `;
-    } else {
-        listaRecomendacoes.innerHTML = recomendacoes
-            .map((recomendacao, indice) =>
-                criarCardRecomendacao(recomendacao, indice)
-            )
-            .join("");
+    if (quantidadeBans < 6) {
+        return {
+            fase: "BANS",
+            quantidadeBans,
+            quantidadePicks,
+            indiceRodadaAtual: -1,
+            totalAcoes: quantidadeBans + quantidadePicks,
+            titulo: "Registre os três bans de cada equipe",
+            descricao:
+                `Faltam ${6 - quantidadeBans} bans para iniciar a fase de picks.`
+        };
     }
 
-    renderizarAvisos(analise.avisos ?? []);
+    if (quantidadePicks < 10) {
+        const rodada = SEQUENCIA_PICKS[indiceRodadaAtual];
+        const faltantes = rodada.indices.filter(
+            (indice) => !estado.picks[rodada.lado][indice]
+        );
+
+        return {
+            fase: "PICKS",
+            quantidadeBans,
+            quantidadePicks,
+            indiceRodadaAtual,
+            totalAcoes: quantidadeBans + quantidadePicks,
+            titulo: rodada.titulo,
+            descricao:
+                `Preencha ${faltantes.map((indice) =>
+                    `${LADOS[rodada.lado].prefixo}${indice + 1}`
+                ).join(" e ")}.`
+        };
+    }
+
+    return {
+        fase: "CONCLUIDO",
+        quantidadeBans,
+        quantidadePicks,
+        indiceRodadaAtual: -1,
+        totalAcoes: 16,
+        titulo: "Draft completo",
+        descricao:
+            "Os dez picks e os seis bans foram registrados."
+    };
 }
 
-function criarCardRecomendacao(recomendacao, indice) {
-    const classeNivel = normalizarClasse(recomendacao.nivel);
-    const componentes = Object.entries(
-        recomendacao.componentes ?? {}
+function encontrarRodadaAtual() {
+    return SEQUENCIA_PICKS.findIndex(
+        (_, indice) => !rodadaConcluida(indice)
     );
-    const motivos = recomendacao.motivos ?? [];
+}
 
-    const componentesHtml = componentes
-        .map(([nome, valor]) => `
-            <span class="componente-pontuacao">
-                <small>
-                    ${escaparHtml(ROTULOS_COMPONENTES[nome] ?? nome)}
-                </small>
+function rodadaConcluida(indiceRodada) {
+    const rodada = SEQUENCIA_PICKS[indiceRodada];
 
-                <strong class="${valor < 0 ? "valor-negativo" : ""}">
-                    ${formatarPontuacaoComponente(nome, valor)}
+    return rodada.indices.every(
+        (indice) => Boolean(estado.picks[rodada.lado][indice])
+    );
+}
+
+function slotPertenceRodadaAtual(lado, indice, leitura) {
+    if (leitura.fase !== "PICKS") {
+        return false;
+    }
+
+    const rodada = SEQUENCIA_PICKS[leitura.indiceRodadaAtual];
+
+    return rodada.lado === lado
+        && rodada.indices.includes(indice)
+        && !estado.picks[lado][indice];
+}
+
+function buscarRodadaDoSlot(lado, indice) {
+    return SEQUENCIA_PICKS.findIndex(
+        (rodada) =>
+            rodada.lado === lado && rodada.indices.includes(indice)
+    );
+}
+
+function renderizarEstadoGeral(leitura) {
+    faseDraft.textContent =
+        leitura.fase === "BANS"
+            ? "Fase de bans"
+            : leitura.fase === "PICKS"
+                ? `Fase de picks · Rodada ${leitura.indiceRodadaAtual + 1}`
+                : "Draft concluído";
+
+    proximaAcao.textContent = leitura.titulo;
+    descricaoAcao.textContent = leitura.descricao;
+    progressoAtual.textContent = leitura.totalAcoes;
+    progressoBarra.style.width =
+        `${(leitura.totalAcoes / 16) * 100}%`;
+
+    contadorBans.textContent =
+        `${leitura.quantidadeBans} de 6 bans`;
+    contadorPicks.textContent =
+        `${leitura.quantidadePicks} de 10 picks`;
+
+    resumoProximaAcao.textContent = leitura.titulo;
+    resumoProximaDescricao.textContent = leitura.descricao;
+}
+
+function renderizarMinhaPosicao() {
+    const meuLado = meuLadoSelect.value;
+    const minhaOrdem = Number(minhaOrdemSelect.value);
+
+    if (meuLado === "INDEFINIDO" || !minhaOrdem) {
+        resumoMinhaPosicao.textContent = "Não definida";
+        return;
+    }
+
+    const rodada = buscarRodadaDoSlot(meuLado, minhaOrdem - 1);
+
+    resumoMinhaPosicao.textContent =
+        `${LADOS[meuLado].nome} · `
+        + `${LADOS[meuLado].prefixo}${minhaOrdem} · `
+        + `Rodada ${rodada + 1}`;
+}
+
+function renderizarLeituraFlex() {
+    const flexSelecionados = [
+        ...listarSlots("PICK", "AZUL"),
+        ...listarSlots("PICK", "VERMELHO")
+    ].filter((slot) =>
+        slot.heroi && obterRotasHeroi(slot.heroi).length > 1
+    );
+
+    if (flexSelecionados.length === 0) {
+        listaFlex.innerHTML = `
+            <p>Nenhum herói flex selecionado.</p>
+        `;
+        return;
+    }
+
+    listaFlex.innerHTML = flexSelecionados
+        .map((slot) => `
+            <div class="flex-item">
+                <strong>
+                    ${LADOS[slot.lado].prefixo}${slot.indice + 1}
+                    · ${escaparHtml(slot.heroi.nome)}
                 </strong>
+
+                <div>${criarChipsRotas(slot.heroi, true)}</div>
+            </div>
+        `)
+        .join("");
+}
+
+function renderizarHipotesesFuncao() {
+    const picksSelecionados = [
+        ...listarSlots("PICK", "AZUL"),
+        ...listarSlots("PICK", "VERMELHO")
+    ].filter((slot) => slot.heroi);
+
+    if (picksSelecionados.length === 0) {
+        hipotesesFuncao.innerHTML = `
+            <p>
+                As possibilidades aparecerão conforme os heróis forem escolhidos.
+            </p>
+        `;
+        return;
+    }
+
+    hipotesesFuncao.innerHTML = picksSelecionados
+        .map((slot) => `
+            <div class="hipotese-item">
+                <strong>
+                    ${LADOS[slot.lado].prefixo}${slot.indice + 1}
+                    · ${escaparHtml(slot.heroi.nome)}
+                </strong>
+
+                <div>${criarChipsRotas(slot.heroi, true)}</div>
+            </div>
+        `)
+        .join("");
+}
+
+function criarChipsRotas(heroi, incluirFlex = false) {
+    const rotas = obterRotasHeroi(heroi);
+    const chipsRotas = rotas
+        .map((rota) => `
+            <span class="rota-chip">
+                ${escaparHtml(NOMES_ROTAS[rota] ?? rota)}
             </span>
         `)
         .join("");
 
-    const motivosHtml = motivos
-        .map((motivo) => `
-            <li>${escaparHtml(motivo)}</li>
-        `)
-        .join("");
+    const chipFlex = incluirFlex && rotas.length > 1
+        ? `<span class="flex-chip">Flex</span>`
+        : "";
 
     return `
-        <article class="card-recomendacao">
-            <div class="card-recomendacao__topo">
-                <div>
-                    <span class="card-recomendacao__posicao">
-                        ESCOLHA ${String(indice + 1).padStart(2, "0")}
-                    </span>
-
-                    <h3>
-                        ${escaparHtml(recomendacao.nome)}
-                    </h3>
-                </div>
-
-                <div class="card-recomendacao__pontuacao">
-                    ${recomendacao.pontuacaoFinal}
-                    <small>/100</small>
-                </div>
-            </div>
-
-            <div class="card-recomendacao__status">
-                <span class="nivel nivel--${classeNivel}">
-                    ${escaparHtml(recomendacao.nivel)}
-                </span>
-
-                <span class="validacao-dados">
-                    ${
-                        recomendacao.dadosValidados
-                            ? "Dados revisados"
-                            : "Dados provisórios"
-                    }
-                </span>
-            </div>
-
-            <div class="componentes-pontuacao">
-                ${componentesHtml}
-            </div>
-
-            <div class="motivos-recomendacao">
-                <strong>Por que esta escolha?</strong>
-
-                <ul>
-                    ${motivosHtml}
-                </ul>
-            </div>
-        </article>
+        <span class="slot-pick__rotas">
+            ${chipsRotas}
+            ${chipFlex}
+        </span>
     `;
 }
 
-function renderizarAvisos(avisos) {
-    if (avisos.length === 0) {
-        painelAvisos.classList.add("oculto");
-        listaAvisos.innerHTML = "";
-        return;
+function obterRotasHeroi(heroi) {
+    if (
+        Array.isArray(heroi.rotasPossiveis)
+        && heroi.rotasPossiveis.length > 0
+    ) {
+        return heroi.rotasPossiveis;
     }
 
-    listaAvisos.innerHTML = avisos
-        .map((aviso) => `<li>${escaparHtml(aviso)}</li>`)
-        .join("");
-
-    painelAvisos.classList.remove("oculto");
+    return heroi.rota ? [heroi.rota] : [];
 }
 
-async function extrairMensagemErro(resposta) {
-    try {
-        const erro = await resposta.json();
-        const detalhes = Array.isArray(erro.detalhes)
-            ? erro.detalhes.join(" ")
-            : "";
-
-        return detalhes || erro.erro || "Não foi possível analisar o draft.";
-    } catch (erro) {
-        return "Não foi possível analisar o draft.";
-    }
+function contarPreenchidos(colecaoPorLado) {
+    return Object.values(colecaoPorLado)
+        .flat()
+        .filter(Boolean)
+        .length;
 }
 
-function formatarPontuacaoComponente(nome, valor) {
-    if (nome === "base") {
-        return String(valor);
-    }
+function reiniciarDraft() {
+    estado.bans.AZUL = Array(3).fill(null);
+    estado.bans.VERMELHO = Array(3).fill(null);
+    estado.picks.AZUL = Array(5).fill(null);
+    estado.picks.VERMELHO = Array(5).fill(null);
 
-    return valor > 0 ? `+${valor}` : String(valor);
-}
+    meuLadoSelect.value = "INDEFINIDO";
+    minhaOrdemSelect.value = "";
 
-function mostrarErro(mensagem) {
-    mensagemErro.textContent = mensagem;
-}
-
-function limparErro() {
-    mensagemErro.textContent = "";
-}
-
-function obterIniciais(nome) {
-    return nome
-        .split(" ")
-        .slice(0, 2)
-        .map((parte) => parte.charAt(0))
-        .join("")
-        .toUpperCase();
+    renderizarTudo();
 }
 
 function normalizarTexto(valor) {
@@ -712,16 +771,8 @@ function normalizarTexto(valor) {
         .toLowerCase();
 }
 
-function normalizarClasse(valor) {
-    return normalizarTexto(valor)
-        .replaceAll(" ", "-")
-        .replaceAll("_", "-");
-}
-
 function escaparHtml(valor) {
     const elemento = document.createElement("div");
-
     elemento.textContent = String(valor);
-
     return elemento.innerHTML;
 }
