@@ -16,7 +16,9 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/game-draft.css">
     <link rel="stylesheet" href="/css/role-inference.css">
+    <link rel="stylesheet" href="/css/next-pick.css">
     <script src="/js/app.js" defer></script>
+    <script src="/js/next-pick.js" defer></script>
 </head>
 
 <body>
@@ -199,10 +201,49 @@
             </div>
         </section>
 
+        <section id="painel-proximo-pick" class="painel-proximo-pick">
+            <div class="painel-proximo-pick__cabecalho">
+                <div>
+                    <span class="numero-etapa">03</span>
+                    <div>
+                        <h2>O que devo pegar?</h2>
+                        <p>
+                            Resposta principal calculada sobre todas as funções ainda possíveis.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="painel-proximo-pick__controles">
+                    <label class="preferencia-funcao" for="preferencia-funcao">
+                        <span>Função preferida</span>
+                        <select id="preferencia-funcao">
+                            <option value="">Qualquer função</option>
+                            <option value="CLASH_LANE">Clash Lane</option>
+                            <option value="JUNGLE">Jungle</option>
+                            <option value="MID_LANE">Mid Lane</option>
+                            <option value="FARM_LANE">Farm Lane</option>
+                            <option value="ROAMING">Roaming</option>
+                        </select>
+                    </label>
+
+                    <span id="status-proximo-pick" class="coach-status coach-status--carregando">
+                        Calculando
+                    </span>
+                </div>
+            </div>
+
+            <div id="conteudo-proximo-pick" class="conteudo-proximo-pick">
+                <div class="coach-carregando">
+                    <span class="coach-carregando__circulo"></span>
+                    Preparando o motor de recomendação...
+                </div>
+            </div>
+        </section>
+
         <section class="leitura-draft">
             <div class="leitura-draft__cabecalho">
                 <div>
-                    <span class="numero-etapa">03</span>
+                    <span class="numero-etapa">04</span>
                     <div>
                         <h2>Leitura do coach</h2>
                         <p>
