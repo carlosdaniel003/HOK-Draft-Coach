@@ -84,6 +84,11 @@ public class HeroiService {
             "Maga-assassina de alta mobilidade", 5, TipoDano.MAGICO,
             new AtributosHeroi(7, 2, 10, 5, 5, 10),
             "mobilidade", "explosão", "controle"),
+        criarHeroiFlex(20L, "Kongming", Rota.MID_LANE,
+            List.of(Rota.MID_LANE, Rota.JUNGLE),
+            "Mago de mobilidade e execução", 4, TipoDano.MAGICO,
+            new AtributosHeroi(4, 3, 8, 6, 7, 9),
+            "flex", "mobilidade", "execução", "escalamento"),
 
         criarHeroi(17L, "Zhang Fei", Rota.ROAMING,
             "Proteção, iniciação e linha de frente", 2, TipoDano.FISICO,
@@ -97,7 +102,7 @@ public class HeroiService {
         criarHeroi(19L, "Ming", Rota.ROAMING,
             "Amplificação de um aliado carregador", 3, TipoDano.MAGICO,
             new AtributosHeroi(4, 3, 5, 6, 3, 4),
-            "amplificação", "proteção", "dupla" )
+            "amplificação", "proteção", "dupla")
     );
 
     public List<Heroi> listarTodos() {
@@ -106,7 +111,7 @@ public class HeroiService {
 
     public List<Heroi> listarPorRota(Rota rota) {
         return herois.stream()
-            .filter(heroi -> heroi.getRota() == rota)
+            .filter(heroi -> heroi.podeJogarNaRota(rota))
             .toList();
     }
 
@@ -130,6 +135,30 @@ public class HeroiService {
             id,
             nome,
             rota,
+            estilo,
+            dificuldade,
+            tipoDano,
+            atributos,
+            List.of(caracteristicas)
+        );
+    }
+
+    private Heroi criarHeroiFlex(
+        Long id,
+        String nome,
+        Rota rotaPrincipal,
+        List<Rota> rotasPossiveis,
+        String estilo,
+        int dificuldade,
+        TipoDano tipoDano,
+        AtributosHeroi atributos,
+        String... caracteristicas
+    ) {
+        return new Heroi(
+            id,
+            nome,
+            rotaPrincipal,
+            rotasPossiveis,
             estilo,
             dificuldade,
             tipoDano,
