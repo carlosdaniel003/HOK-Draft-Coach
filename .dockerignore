@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+.vscode
+.vercel
+target
+*.log
+README.md
+docs
+maven-test-report.zip
