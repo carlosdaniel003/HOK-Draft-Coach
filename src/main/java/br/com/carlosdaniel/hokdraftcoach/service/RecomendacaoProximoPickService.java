@@ -99,7 +99,7 @@ public class RecomendacaoProximoPickService {
         );
 
         if (request.meuLado() == null || request.minhaOrdem() == null) {
-            return respostaSemRecomendacao(
+            return semRecomendacao(
                 "AGUARDANDO_IDENTIFICACAO",
                 "Informe seu lado e sua ordem para calcular qual herói você deve pegar.",
                 request,
@@ -107,7 +107,7 @@ public class RecomendacaoProximoPickService {
                 null,
                 List.of(),
                 List.of(
-                    "A inferência de funções continua disponível, mas a recomendação principal depende do seu slot."
+                    "A inferência de funções continua ativa, mas a recomendação depende do seu slot."
                 )
             );
         }
@@ -116,7 +116,7 @@ public class RecomendacaoProximoPickService {
             + request.bansVermelho().size();
 
         if (totalBans < 6) {
-            return respostaSemRecomendacao(
+            return semRecomendacao(
                 "FASE_DE_BANS",
                 "Conclua os seis bans antes de calcular o próximo pick.",
                 request,
@@ -128,21 +128,21 @@ public class RecomendacaoProximoPickService {
         }
 
         if (slotJaPreenchido(request)) {
-            return respostaSemRecomendacao(
+            return semRecomendacao(
                 "PICK_JA_REALIZADO",
                 "Seu slot já possui um herói registrado.",
                 request,
                 inferencia,
                 null,
                 List.of(),
-                List.of("Remova o herói do seu slot para recalcular a escolha.")
+                List.of("Remova o herói do seu slot para recalcular.")
             );
         }
 
-        EstadoRodada estadoRodada = calcularEstadoRodada(request);
+        EstadoRodada rodadaAtual = calcularRodadaAtual(request);
 
-        if (estadoRodada == null) {
-            return respostaSemRecomendacao(
+        if (rodadaAtual == null) {
+            return semRecomendacao(
                 "DRAFT_CONCLUIDO",
                 "Todos os picks já foram registrados.",
                 request,
@@ -153,31 +153,41 @@ public class RecomendacaoProximoPickService {
             );
         }
 
-        InferenciaEquipeResponse aliados = selecionarEquipe(
+        InferenciaEquipeResponse aliados = equipe(
             inferencia,
             request.meuLado()
         );
-        InferenciaEquipeResponse inimigos = selecionarEquipe(
+        InferenciaEquipeResponse inimigos = equipe(
             inferencia,
             request.meuLado().adversario()
         );
 
         if (!aliados.composicaoCompativel()) {
-            return respostaSemRecomendacao(
+            return semRecomendacao(
                 "COMPOSICAO_ALIADA_INCOMPATIVEL",
-                "Não existe uma distribuição válida de funções para sua equipe no estado atual.",
+                "Não existe uma distribuição válida de funções para sua equipe.",
                 request,
                 inferencia,
-                estadoRodada.lado(),
-                estadoRodada.slots(),
+                rodadaAtual.lado(),
+                rodadaAtual.slots(),
                 aliados.avisos()
             );
         }
 
-        Set<Long> indisponiveis = coletarIdsIndisponiveis(request);
-        List<Heroi> inimigosSemFuncao = carregarHerois(
-            picksDoLado(request, request.meuLado().adversario())
+        Set<Long> indisponiveis = idsIndisponiveis(request);
+        List<Heroi> inimigosSemFuncao = heroisDosPicks(
+            picks(request, request.meuLado().adversario())
         );
+
+        Comparator<RecomendacaoPickResponse> comparador = Comparator
+            .comparingInt(RecomendacaoPickResponse::pontuacaoFinal)
+            .reversed()
+            .thenComparing(
+                Comparator.comparingInt(
+                    RecomendacaoPickResponse::piorCenario
+                ).reversed()
+            )
+            .thenComparing(RecomendacaoPickResponse::heroi);
 
         List<RecomendacaoPickResponse> recomendacoes = heroiService
             .listarTodos()
@@ -191,26 +201,19 @@ public class RecomendacaoProximoPickService {
                 request.funcoesPreferidas()
             ))
             .filter(resultado -> resultado != null)
-            .sorted(
-                Comparator
-                    .comparingInt(RecomendacaoPickResponse::pontuacaoFinal)
-                    .reversed()
-                    .thenComparingInt(RecomendacaoPickResponse::piorCenario)
-                    .reversed()
-                    .thenComparing(RecomendacaoPickResponse::heroi)
-            )
+            .sorted(comparador)
             .toList();
 
         if (recomendacoes.isEmpty()) {
-            return respostaSemRecomendacao(
+            return semRecomendacao(
                 "SEM_CANDIDATOS",
-                "Nenhum herói disponível consegue preencher as funções abertas nas hipóteses atuais.",
+                "Nenhum herói disponível preenche as funções abertas.",
                 request,
                 inferencia,
-                estadoRodada.lado(),
-                estadoRodada.slots(),
+                rodadaAtual.lado(),
+                rodadaAtual.slots(),
                 List.of(
-                    "Revise os picks, bans ou as rotas possíveis cadastradas para os heróis."
+                    "Revise os picks, bans ou as rotas possíveis cadastradas."
                 )
             );
         }
@@ -221,23 +224,14 @@ public class RecomendacaoProximoPickService {
             .skip(1)
             .limit(LIMITE_ALTERNATIVAS)
             .toList();
-
-        boolean ehMinhaVez = estadoRodada.lado() == request.meuLado()
-            && estadoRodada.ordens().contains(request.minhaOrdem());
-
+        boolean ehMinhaVez = rodadaAtual.lado() == request.meuLado()
+            && rodadaAtual.ordens().contains(request.minhaOrdem());
         String mensagem = ehMinhaVez
-            ? "É sua vez. A melhor escolha calculada agora é "
+            ? "É sua vez. A melhor escolha agora é "
                 + principal.heroi() + "."
             : "Planejamento para seu próximo pick: "
                 + principal.heroi()
-                + ". A recomendação pode mudar após as escolhas anteriores.";
-
-        List<String> avisos = criarAvisosGerais(
-            request,
-            aliados,
-            inimigos,
-            ehMinhaVez
-        );
+                + ". A recomendação pode mudar após os picks anteriores.";
 
         return new RecomendacaoProximoPickResponse(
             VERSAO_MOTOR,
@@ -245,15 +239,15 @@ public class RecomendacaoProximoPickService {
             mensagem,
             ehMinhaVez,
             meuSlot(request),
-            estadoRodada.lado(),
-            estadoRodada.slots(),
+            rodadaAtual.lado(),
+            rodadaAtual.slots(),
             aliados.totalHipoteses(),
             inimigos.totalHipoteses(),
             aliados.confiancaMelhorHipotese(),
             inimigos.confiancaMelhorHipotese(),
             principal,
             alternativas,
-            avisos
+            avisosGerais(request, aliados, inimigos, ehMinhaVez)
         );
     }
 
@@ -265,14 +259,10 @@ public class RecomendacaoProximoPickService {
         List<Rota> funcoesPreferidas
     ) {
         List<HipoteseFuncaoResponse> hipotesesAliadas = aliados.hipoteses();
-        List<HipoteseFuncaoResponse> hipotesesInimigas =
-            inimigos.hipoteses().isEmpty()
-                ? List.of()
-                : inimigos.hipoteses();
-
+        List<HipoteseFuncaoResponse> hipotesesInimigas = inimigos.hipoteses();
         List<AvaliacaoCenario> cenarios = new ArrayList<>();
         Map<Rota, Integer> frequenciaRotas = new EnumMap<>(Rota.class);
-        int hipotesesAliadasCobertas = 0;
+        int hipotesesCobertas = 0;
 
         for (HipoteseFuncaoResponse hipoteseAliada : hipotesesAliadas) {
             List<Rota> rotasValidas = candidato.getRotasPossiveis()
@@ -284,10 +274,10 @@ public class RecomendacaoProximoPickService {
                 continue;
             }
 
-            hipotesesAliadasCobertas++;
+            hipotesesCobertas++;
 
             if (hipotesesInimigas.isEmpty()) {
-                AvaliacaoCenario melhor = melhorAvaliacaoPorRota(
+                AvaliacaoCenario melhor = melhorCenario(
                     candidato,
                     rotasValidas,
                     hipoteseAliada,
@@ -301,7 +291,7 @@ public class RecomendacaoProximoPickService {
             }
 
             for (HipoteseFuncaoResponse hipoteseInimiga : hipotesesInimigas) {
-                AvaliacaoCenario melhor = melhorAvaliacaoPorRota(
+                AvaliacaoCenario melhor = melhorCenario(
                     candidato,
                     rotasValidas,
                     hipoteseAliada,
@@ -318,11 +308,11 @@ public class RecomendacaoProximoPickService {
             return null;
         }
 
-        int totalHipotesesAliadas = Math.max(1, hipotesesAliadas.size());
+        int totalHipoteses = Math.max(1, hipotesesAliadas.size());
         int cobertura = (int) Math.round(
-            (hipotesesAliadasCobertas * 100.0) / totalHipotesesAliadas
+            hipotesesCobertas * 100.0 / totalHipoteses
         );
-        int media = arredondarMedia(cenarios, AvaliacaoCenario::pontuacao);
+        int media = media(cenarios, AvaliacaoCenario::pontuacao);
         int pior = cenarios.stream()
             .mapToInt(AvaliacaoCenario::pontuacao)
             .min()
@@ -331,66 +321,47 @@ public class RecomendacaoProximoPickService {
             .mapToInt(AvaliacaoCenario::pontuacao)
             .max()
             .orElse(0);
-        int pontuacaoFinal = limitar(
+        int finalScore = limitar(
             (int) Math.round(
-                media * 0.50
-                    + pior * 0.35
-                    + cobertura * 0.15
+                media * 0.50 + pior * 0.35 + cobertura * 0.15
             ),
             0,
             100
         );
-
-        Map<String, Integer> componentes = calcularMediaComponentes(cenarios);
-        List<Rota> rotasRecomendadas = ordenarRotasRecomendadas(
-            candidato,
-            frequenciaRotas
-        );
-        String seguranca = calcularSeguranca(
-            cobertura,
-            pior,
-            melhor - pior
-        );
-        List<String> motivos = criarMotivos(
-            candidato,
-            rotasRecomendadas,
-            cobertura,
-            media,
-            pior,
-            componentes,
-            funcoesPreferidas
-        );
-        List<String> riscos = criarRiscos(
-            candidato,
-            rotasRecomendadas,
-            cobertura,
-            pior,
-            melhor - pior
-        );
+        Map<String, Integer> componentes = mediaComponentes(cenarios);
+        List<Rota> rotas = ordenarRotas(candidato, frequenciaRotas);
 
         return new RecomendacaoPickResponse(
             candidato.getId(),
             candidato.getNome(),
-            rotasRecomendadas,
-            pontuacaoFinal,
+            rotas,
+            finalScore,
             media,
             pior,
             cobertura,
             cenarios.size(),
-            seguranca,
+            seguranca(cobertura, pior, melhor - pior),
             candidato.getDificuldade(),
             componentes,
-            motivos,
-            riscos,
+            motivos(
+                candidato,
+                rotas,
+                cobertura,
+                media,
+                pior,
+                componentes,
+                funcoesPreferidas
+            ),
+            riscos(candidato, rotas, cobertura, pior, melhor - pior),
             false
         );
     }
 
-    private AvaliacaoCenario melhorAvaliacaoPorRota(
+    private AvaliacaoCenario melhorCenario(
         Heroi candidato,
         List<Rota> rotasValidas,
-        HipoteseFuncaoResponse hipoteseAliada,
-        HipoteseFuncaoResponse hipoteseInimiga,
+        HipoteseFuncaoResponse aliada,
+        HipoteseFuncaoResponse inimiga,
         List<Heroi> inimigosSemFuncao,
         List<Rota> funcoesPreferidas
     ) {
@@ -398,8 +369,8 @@ public class RecomendacaoProximoPickService {
             .map(rota -> avaliarCenario(
                 candidato,
                 rota,
-                hipoteseAliada,
-                hipoteseInimiga,
+                aliada,
+                inimiga,
                 inimigosSemFuncao,
                 funcoesPreferidas,
                 rotasValidas.size()
@@ -417,52 +388,58 @@ public class RecomendacaoProximoPickService {
     private AvaliacaoCenario avaliarCenario(
         Heroi candidato,
         Rota rota,
-        HipoteseFuncaoResponse hipoteseAliada,
-        HipoteseFuncaoResponse hipoteseInimiga,
+        HipoteseFuncaoResponse aliada,
+        HipoteseFuncaoResponse inimiga,
         List<Heroi> inimigosSemFuncao,
         List<Rota> funcoesPreferidas,
         int totalRotasValidas
     ) {
-        List<Heroi> heroisAliados = carregarHerois(
-            hipoteseAliada.atribuicoes()
+        List<Heroi> heroisAliados = heroisDasAtribuicoes(
+            aliada.atribuicoes()
         );
-        List<Heroi> heroisInimigos = hipoteseInimiga == null
+        List<Heroi> heroisInimigos = inimiga == null
             ? inimigosSemFuncao
-            : carregarHerois(hipoteseInimiga.atribuicoes());
-        Heroi adversarioDireto = hipoteseInimiga == null
+            : heroisDasAtribuicoes(inimiga.atribuicoes());
+        Heroi adversarioDireto = inimiga == null
             ? null
-            : buscarHeroiNaRota(hipoteseInimiga, rota);
-
-        int base = 50;
-        int afinidadeFuncao = rota == candidato.getRota() ? 6 : 2;
-        int confronto = calcularConfronto(
-            candidato,
-            adversarioDireto
-        );
-        int sinergia = calcularSinergia(candidato, heroisAliados);
-        int composicao = calcularComposicao(candidato, heroisAliados);
-        int respostaInimigos = calcularRespostaAosInimigos(
-            candidato,
-            heroisInimigos
-        );
-        int preferencia = funcoesPreferidas.isEmpty()
-            ? 0
-            : funcoesPreferidas.contains(rota) ? 6 : -2;
-        int flexibilidade = candidato.isFlex()
-            ? totalRotasValidas >= 2 ? 5 : 2
-            : 0;
-        int acessibilidade = calcularAcessibilidade(candidato);
+            : heroiNaRota(inimiga, rota);
 
         Map<String, Integer> componentes = new LinkedHashMap<>();
-        componentes.put("base", base);
-        componentes.put("afinidadeFuncao", afinidadeFuncao);
-        componentes.put("confronto", confronto);
-        componentes.put("sinergia", sinergia);
-        componentes.put("composicao", composicao);
-        componentes.put("respostaAosInimigos", respostaInimigos);
-        componentes.put("preferencia", preferencia);
-        componentes.put("flexibilidade", flexibilidade);
-        componentes.put("acessibilidade", acessibilidade);
+        componentes.put("base", 50);
+        componentes.put(
+            "afinidadeFuncao",
+            rota == candidato.getRota() ? 6 : 2
+        );
+        componentes.put(
+            "confronto",
+            confronto(candidato, adversarioDireto)
+        );
+        componentes.put(
+            "sinergia",
+            sinergia(candidato, heroisAliados)
+        );
+        componentes.put(
+            "composicao",
+            composicao(candidato, heroisAliados)
+        );
+        componentes.put(
+            "respostaAosInimigos",
+            respostaInimigos(candidato, heroisInimigos)
+        );
+        componentes.put(
+            "preferencia",
+            funcoesPreferidas.isEmpty()
+                ? 0
+                : funcoesPreferidas.contains(rota) ? 6 : -2
+        );
+        componentes.put(
+            "flexibilidade",
+            candidato.isFlex() ? totalRotasValidas >= 2 ? 5 : 2 : 0
+        );
+        componentes.put(
+            "acessibilidade",
+            acessibilidade(candidato)
+        );
 
         int pontuacao = componentes.values()
             .stream()
@@ -476,77 +453,51 @@ public class RecomendacaoProximoPickService {
         );
     }
 
-    private int calcularConfronto(Heroi candidato, Heroi adversario) {
+    private int confronto(Heroi candidato, Heroi adversario) {
         if (adversario == null) {
             return 0;
         }
 
-        int pontuacao = confrontos.getOrDefault(
+        int pontos = confrontos.getOrDefault(
             chaveDirecional(candidato.getId(), adversario.getId()),
             0
         );
-        AtributosHeroi candidatoAtributos = candidato.getAtributos();
-        AtributosHeroi inimigoAtributos = adversario.getAtributos();
+        AtributosHeroi a = candidato.getAtributos();
+        AtributosHeroi b = adversario.getAtributos();
 
-        if (
-            candidatoAtributos.mobilidade()
-                >= inimigoAtributos.mobilidade() + 3
-        ) {
-            pontuacao += 4;
+        if (a.mobilidade() >= b.mobilidade() + 3) {
+            pontos += 4;
+        }
+        if (a.alcance() >= b.alcance() + 3) {
+            pontos += 4;
+        }
+        if (a.resistencia() >= 7 && b.danoExplosivo() >= 8) {
+            pontos += 4;
+        }
+        if (a.controle() >= 7 && b.mobilidade() >= 7) {
+            pontos += 4;
+        }
+        if (a.danoSustentado() >= 8 && b.resistencia() >= 7) {
+            pontos += 4;
+        }
+        if (b.controle() >= 8 && a.mobilidade() <= 3) {
+            pontos -= 4;
         }
 
-        if (
-            candidatoAtributos.alcance()
-                >= inimigoAtributos.alcance() + 3
-        ) {
-            pontuacao += 4;
-        }
-
-        if (
-            candidatoAtributos.resistencia() >= 7
-                && inimigoAtributos.danoExplosivo() >= 8
-        ) {
-            pontuacao += 4;
-        }
-
-        if (
-            candidatoAtributos.controle() >= 7
-                && inimigoAtributos.mobilidade() >= 7
-        ) {
-            pontuacao += 4;
-        }
-
-        if (
-            candidatoAtributos.danoSustentado() >= 8
-                && inimigoAtributos.resistencia() >= 7
-        ) {
-            pontuacao += 4;
-        }
-
-        if (
-            inimigoAtributos.controle() >= 8
-                && candidatoAtributos.mobilidade() <= 3
-        ) {
-            pontuacao -= 4;
-        }
-
-        return limitar(pontuacao, -15, 15);
+        return limitar(pontos, -15, 15);
     }
 
-    private int calcularSinergia(
-        Heroi candidato,
-        List<Heroi> aliados
-    ) {
-        int pontuacao = 0;
+    private int sinergia(Heroi candidato, List<Heroi> aliados) {
+        int pontos = 0;
 
         for (Heroi aliado : aliados) {
-            int bonus = sinergias.getOrDefault(
+            int cadastrado = sinergias.getOrDefault(
                 chavePar(candidato.getId(), aliado.getId()),
                 0
             );
 
-            if (bonus > 0) {
-                pontuacao += bonus;
+            if (cadastrado > 0) {
+                pontos += cadastrado;
                 continue;
             }
 
@@ -554,86 +505,74 @@ public class RecomendacaoProximoPickService {
                 candidato.getAtributos().controle() >= 7
                     && aliado.getAtributos().danoSustentado() >= 8
             ) {
-                pontuacao += 2;
+                pontos += 2;
             }
-
             if (
                 candidato.getAtributos().resistencia() >= 8
                     && aliado.getAtributos().danoExplosivo() >= 8
             ) {
-                pontuacao += 2;
+                pontos += 2;
             }
-
             if (
                 candidato.getAtributos().danoSustentado() >= 8
                     && aliado.getAtributos().controle() >= 7
             ) {
-                pontuacao += 2;
+                pontos += 2;
             }
         }
 
-        return limitar(pontuacao, 0, 12);
+        return limitar(pontos, 0, 12);
     }
 
-    private int calcularComposicao(
-        Heroi candidato,
-        List<Heroi> aliados
-    ) {
+    private int composicao(Heroi candidato, List<Heroi> aliados) {
         if (aliados.isEmpty()) {
             return 0;
         }
 
-        int pontuacao = 0;
-        boolean temDanoMagico = aliados.stream()
+        int pontos = 0;
+        boolean temMagico = aliados.stream()
             .anyMatch(heroi -> heroi.getTipoDano() != TipoDano.FISICO);
-        boolean temDanoFisico = aliados.stream()
+        boolean temFisico = aliados.stream()
             .anyMatch(heroi -> heroi.getTipoDano() != TipoDano.MAGICO);
 
-        if (
-            !temDanoMagico
-                && candidato.getTipoDano() != TipoDano.FISICO
-        ) {
-            pontuacao += 4;
+        if (!temMagico && candidato.getTipoDano() != TipoDano.FISICO) {
+            pontos += 4;
         }
-
-        if (
-            !temDanoFisico
-                && candidato.getTipoDano() != TipoDano.MAGICO
-        ) {
-            pontuacao += 4;
+        if (!temFisico && candidato.getTipoDano() != TipoDano.MAGICO) {
+            pontos += 4;
         }
-
         if (
-            mediaAtributo(aliados, heroi ->
-                heroi.getAtributos().controle()
+            mediaAtributo(
+                aliados,
+                heroi -> heroi.getAtributos().controle()
             ) < 4
                 && candidato.getAtributos().controle() >= 7
         ) {
-            pontuacao += 5;
+            pontos += 5;
         }
-
         if (
-            mediaAtributo(aliados, heroi ->
-                heroi.getAtributos().resistencia()
+            mediaAtributo(
+                aliados,
+                heroi -> heroi.getAtributos().resistencia()
             ) < 4
                 && candidato.getAtributos().resistencia() >= 7
         ) {
-            pontuacao += 4;
+            pontos += 4;
         }
-
         if (
-            mediaAtributo(aliados, heroi ->
-                heroi.getAtributos().danoSustentado()
+            mediaAtributo(
+                aliados,
+                heroi -> heroi.getAtributos().danoSustentado()
             ) < 5
                 && candidato.getAtributos().danoSustentado() >= 8
         ) {
-            pontuacao += 3;
+            pontos += 3;
         }
 
-        return limitar(pontuacao, 0, 15);
+        return limitar(pontos, 0, 15);
     }
 
-    private int calcularRespostaAosInimigos(
+    private int respostaInimigos(
         Heroi candidato,
         List<Heroi> inimigos
     ) {
@@ -641,47 +580,47 @@ public class RecomendacaoProximoPickService {
             return 0;
         }
 
-        int pontuacao = 0;
-        double mobilidade = mediaAtributo(inimigos, heroi ->
-            heroi.getAtributos().mobilidade()
+        int pontos = 0;
+        double mobilidade = mediaAtributo(
+            inimigos,
+            heroi -> heroi.getAtributos().mobilidade()
         );
-        double resistencia = mediaAtributo(inimigos, heroi ->
-            heroi.getAtributos().resistencia()
+        double resistencia = mediaAtributo(
+            inimigos,
+            heroi -> heroi.getAtributos().resistencia()
         );
-        double alcance = mediaAtributo(inimigos, heroi ->
-            heroi.getAtributos().alcance()
+        double alcance = mediaAtributo(
+            inimigos,
+            heroi -> heroi.getAtributos().alcance()
         );
-        long ameacasExplosivas = inimigos.stream()
+        long explosivos = inimigos.stream()
             .filter(heroi -> heroi.getAtributos().danoExplosivo() >= 8)
             .count();
 
         if (mobilidade >= 7 && candidato.getAtributos().controle() >= 7) {
-            pontuacao += 4;
+            pontos += 4;
         }
-
         if (
             resistencia >= 7
                 && candidato.getAtributos().danoSustentado() >= 8
         ) {
-            pontuacao += 4;
+            pontos += 4;
         }
-
         if (alcance >= 7 && candidato.getAtributos().mobilidade() >= 7) {
-            pontuacao += 3;
+            pontos += 3;
         }
-
         if (
-            ameacasExplosivas >= 2
+            explosivos >= 2
                 && candidato.getAtributos().resistencia() >= 7
         ) {
-            pontuacao += 3;
+            pontos += 3;
         }
 
-        return limitar(pontuacao, 0, 12);
+        return limitar(pontos, 0, 12);
     }
 
-    private int calcularAcessibilidade(Heroi candidato) {
-        return switch (candidato.getDificuldade()) {
+    private int acessibilidade(Heroi heroi) {
+        return switch (heroi.getDificuldade()) {
             case 1 -> 4;
             case 2 -> 2;
             case 3 -> 0;
@@ -690,18 +629,15 @@ public class RecomendacaoProximoPickService {
         };
     }
 
-    private Map<String, Integer> calcularMediaComponentes(
+    private Map<String, Integer> mediaComponentes(
         List<AvaliacaoCenario> cenarios
     ) {
-        Map<String, Integer> medias = new LinkedHashMap<>();
+        Map<String, Integer> resultado = new LinkedHashMap<>();
         Set<String> nomes = new LinkedHashSet<>();
-
-        cenarios.forEach(cenario ->
-            nomes.addAll(cenario.componentes().keySet())
-        );
+        cenarios.forEach(cenario -> nomes.addAll(cenario.componentes().keySet()));
 
         for (String nome : nomes) {
-            int media = (int) Math.round(
+            int valor = (int) Math.round(
                 cenarios.stream()
                     .mapToInt(cenario ->
                         cenario.componentes().getOrDefault(nome, 0)
@@ -709,17 +645,17 @@ public class RecomendacaoProximoPickService {
                     .average()
                     .orElse(0)
             );
-            medias.put(nome, media);
+            resultado.put(nome, valor);
         }
 
-        return medias;
+        return resultado;
     }
 
-    private List<Rota> ordenarRotasRecomendadas(
+    private List<Rota> ordenarRotas(
         Heroi candidato,
-        Map<Rota, Integer> frequenciaRotas
+        Map<Rota, Integer> frequencia
     ) {
-        return frequenciaRotas.entrySet()
+        return frequencia.entrySet()
             .stream()
             .sorted(
                 Comparator
@@ -734,65 +670,46 @@ public class RecomendacaoProximoPickService {
             .toList();
     }
 
-    private List<String> criarMotivos(
+    private List<String> motivos(
         Heroi candidato,
         List<Rota> rotas,
         int cobertura,
         int media,
         int pior,
         Map<String, Integer> componentes,
-        List<Rota> funcoesPreferidas
+        List<Rota> preferidas
     ) {
         List<String> motivos = new ArrayList<>();
-
-        if (cobertura == 100) {
-            motivos.add(
-                "Permanece utilizável em todas as hipóteses atuais da sua equipe."
-            );
-        } else {
-            motivos.add(
-                "É compatível com " + cobertura
-                    + "% das hipóteses atuais da sua equipe."
-            );
-        }
-
         motivos.add(
-            "Melhor função provável: " + rotas.getFirst() + "."
+            cobertura == 100
+                ? "Permanece utilizável em todas as hipóteses atuais da sua equipe."
+                : "É compatível com " + cobertura
+                    + "% das hipóteses atuais da sua equipe."
         );
+        motivos.add("Melhor função provável: " + rotas.getFirst() + ".");
         motivos.add(
             "Média de " + media + "/100 e pior cenário de "
                 + pior + "/100."
         );
 
         if (componentes.getOrDefault("confronto", 0) >= 4) {
-            motivos.add(
-                "Apresenta vantagem de confronto nas distribuições inimigas mais prováveis."
-            );
+            motivos.add("Apresenta vantagem de confronto nas hipóteses inimigas.");
         }
-
         if (componentes.getOrDefault("composicao", 0) >= 4) {
             motivos.add("Supre uma necessidade da composição aliada.");
         }
-
         if (componentes.getOrDefault("sinergia", 0) >= 4) {
-            motivos.add("Possui boa sinergia com os aliados já escolhidos.");
+            motivos.add("Possui boa sinergia com os aliados escolhidos.");
         }
-
         if (componentes.getOrDefault("respostaAosInimigos", 0) >= 4) {
             motivos.add("Responde bem às características gerais dos inimigos.");
         }
-
         if (componentes.getOrDefault("flexibilidade", 0) >= 4) {
             motivos.add("Mantém mais de uma possibilidade de função aberta.");
         }
-
-        if (
-            !funcoesPreferidas.isEmpty()
-                && rotas.stream().anyMatch(funcoesPreferidas::contains)
-        ) {
+        if (!preferidas.isEmpty() && rotas.stream().anyMatch(preferidas::contains)) {
             motivos.add("É compatível com uma das suas funções preferidas.");
         }
-
         if (candidato.getDificuldade() <= 2) {
             motivos.add("Possui execução relativamente acessível.");
         }
@@ -800,7 +717,7 @@ public class RecomendacaoProximoPickService {
         return motivos.stream().distinct().limit(6).toList();
     }
 
-    private List<String> criarRiscos(
+    private List<String> riscos(
         Heroi candidato,
         List<Rota> rotas,
         int cobertura,
@@ -810,31 +727,20 @@ public class RecomendacaoProximoPickService {
         List<String> riscos = new ArrayList<>();
 
         if (cobertura < 100) {
-            riscos.add(
-                "Não se encaixa em todas as distribuições de função ainda possíveis."
-            );
+            riscos.add("Não se encaixa em todas as distribuições ainda possíveis.");
         }
-
         if (pior < 55) {
-            riscos.add("Possui pelo menos um cenário de confronto desfavorável.");
+            riscos.add("Possui pelo menos um cenário desfavorável.");
         }
-
         if (variacao > 15) {
-            riscos.add(
-                "O desempenho varia bastante conforme as funções inimigas forem reveladas."
-            );
+            riscos.add("O desempenho varia conforme as funções inimigas forem reveladas.");
         }
-
         if (candidato.getDificuldade() >= 4) {
             riscos.add("Exige execução mecânica avançada.");
         }
-
         if (rotas.size() > 1) {
-            riscos.add(
-                "A função final ainda depende da evolução do draft."
-            );
+            riscos.add("A função final ainda depende da evolução do draft.");
         }
-
         if (riscos.isEmpty()) {
             riscos.add("Nenhum risco estrutural relevante foi identificado.");
         }
@@ -842,62 +748,47 @@ public class RecomendacaoProximoPickService {
         return riscos.stream().distinct().limit(4).toList();
     }
 
-    private String calcularSeguranca(
-        int cobertura,
-        int pior,
-        int variacao
-    ) {
+    private String seguranca(int cobertura, int pior, int variacao) {
         if (cobertura == 100 && pior >= 65 && variacao <= 12) {
             return "ALTA";
         }
-
         if (cobertura == 100 && pior >= 55 && variacao <= 20) {
             return "MEDIA";
         }
-
         if (cobertura >= 70 && pior >= 45) {
             return "SITUACIONAL";
         }
-
         return "ARRISCADA";
     }
 
-    private List<String> criarAvisosGerais(
+    private List<String> avisosGerais(
         RecomendacaoProximoPickRequest request,
         InferenciaEquipeResponse aliados,
         InferenciaEquipeResponse inimigos,
         boolean ehMinhaVez
     ) {
         List<String> avisos = new ArrayList<>();
-
         avisos.add(
             "Os dados estratégicos são provisórios e ainda não representam estatísticas oficiais do jogo."
         );
 
         if (!ehMinhaVez) {
-            avisos.add(
-                "Esta é uma recomendação preventiva; picks anteriores podem alterar o resultado."
-            );
+            avisos.add("A recomendação é preventiva e pode mudar após os próximos picks.");
         }
-
         if (!"ALTA".equals(aliados.confiancaMelhorHipotese())) {
             avisos.add(
-                "As funções da sua equipe ainda possuem incerteza: "
+                "As funções aliadas ainda possuem incerteza: "
                     + aliados.confiancaMelhorHipotese() + "."
             );
         }
-
         if (!"ALTA".equals(inimigos.confiancaMelhorHipotese())) {
             avisos.add(
                 "As funções inimigas ainda possuem incerteza: "
                     + inimigos.confiancaMelhorHipotese() + "."
             );
         }
-
         if (request.funcoesPreferidas().isEmpty()) {
-            avisos.add(
-                "Nenhuma função preferida foi informada; a nota não considera conforto pessoal."
-            );
+            avisos.add("Nenhuma função preferida foi informada.");
         }
 
         return avisos;
@@ -906,61 +797,48 @@ public class RecomendacaoProximoPickService {
     private void validarEstadoInformado(
         RecomendacaoProximoPickRequest request
     ) {
-        if (
-            (request.meuLado() == null) != (request.minhaOrdem() == null)
-        ) {
+        if ((request.meuLado() == null) != (request.minhaOrdem() == null)) {
             throw new RegraNegocioException(
                 "Informe conjuntamente seu lado e sua ordem, ou deixe ambos vazios."
             );
         }
 
-        Set<Long> idsUsados = new HashSet<>();
-        validarListaBans(request.bansAzul(), "bans do lado azul", idsUsados);
-        validarListaBans(
-            request.bansVermelho(),
-            "bans do lado vermelho",
-            idsUsados
-        );
+        Set<Long> bans = new HashSet<>();
+        validarBans(request.bansAzul(), "lado azul", bans);
+        validarBans(request.bansVermelho(), "lado vermelho", bans);
 
-        for (PickSemFuncaoRequest pick : request.picksAzul()) {
-            validarPickContraBans(pick, idsUsados);
-        }
-
-        for (PickSemFuncaoRequest pick : request.picksVermelho()) {
-            validarPickContraBans(pick, idsUsados);
-        }
+        request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));
+        request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));
     }
 
-    private void validarListaBans(
+    private void validarBans(
         List<Long> ids,
-        String descricao,
-        Set<Long> idsUsados
+        String lado,
+        Set<Long> bans
     ) {
         for (Long id : ids) {
             if (id == null || id <= 0) {
                 throw new RegraNegocioException(
-                    "Existe um ID inválido em " + descricao + "."
+                    "Existe um ID inválido nos bans do " + lado + "."
                 );
             }
 
             Heroi heroi = buscarHeroi(id);
-
-            if (!idsUsados.add(id)) {
+            if (!bans.add(id)) {
                 throw new RegraNegocioException(
                     "O herói " + heroi.getNome()
-                        + " foi informado mais de uma vez entre os bans."
+                        + " foi banido mais de uma vez."
                 );
             }
         }
     }
 
-    private void validarPickContraBans(
+    private void validarPickBanido(
         PickSemFuncaoRequest pick,
-        Set<Long> idsBanidos
+        Set<Long> bans
     ) {
         Heroi heroi = buscarHeroi(pick.heroiId());
-
-        if (idsBanidos.contains(pick.heroiId())) {
+        if (bans.contains(pick.heroiId())) {
             throw new RegraNegocioException(
                 "O herói " + heroi.getNome()
                     + " está banido e não pode ser escolhido."
@@ -968,27 +846,23 @@ public class RecomendacaoProximoPickService {
         }
     }
 
-    private EstadoRodada calcularEstadoRodada(
+    private EstadoRodada calcularRodadaAtual(
         RecomendacaoProximoPickRequest request
     ) {
         for (RodadaPick rodada : RODADAS) {
-            Map<Integer, Long> picks = mapaPicks(
-                picksDoLado(request, rodada.lado())
-            );
-            List<Integer> ordensFaltantes = rodada.ordens()
+            Map<Integer, Long> picks = mapaPicks(picks(request, rodada.lado()));
+            List<Integer> faltantes = rodada.ordens()
                 .stream()
                 .filter(ordem -> !picks.containsKey(ordem))
                 .toList();
 
-            if (!ordensFaltantes.isEmpty()) {
-                List<String> slots = ordensFaltantes.stream()
-                    .map(ordem -> rodada.lado().prefixoSlot() + ordem)
-                    .toList();
-
+            if (!faltantes.isEmpty()) {
                 return new EstadoRodada(
                     rodada.lado(),
-                    ordensFaltantes,
-                    slots
+                    faltantes,
+                    faltantes.stream()
+                        .map(ordem -> rodada.lado().prefixoSlot() + ordem)
+                        .toList()
                 );
             }
         }
@@ -999,12 +873,12 @@ public class RecomendacaoProximoPickService {
     private boolean slotJaPreenchido(
         RecomendacaoProximoPickRequest request
     ) {
-        return picksDoLado(request, request.meuLado())
+        return picks(request, request.meuLado())
             .stream()
             .anyMatch(pick -> pick.ordem().equals(request.minhaOrdem()));
     }
 
-    private Set<Long> coletarIdsIndisponiveis(
+    private Set<Long> idsIndisponiveis(
         RecomendacaoProximoPickRequest request
     ) {
         Set<Long> ids = new HashSet<>();
@@ -1015,7 +889,7 @@ public class RecomendacaoProximoPickService {
         return ids;
     }
 
-    private List<PickSemFuncaoRequest> picksDoLado(
+    private List<PickSemFuncaoRequest> picks(
         RecomendacaoProximoPickRequest request,
         LadoDraft lado
     ) {
@@ -1024,7 +898,7 @@ public class RecomendacaoProximoPickService {
             : request.picksVermelho();
     }
 
-    private InferenciaEquipeResponse selecionarEquipe(
+    private InferenciaEquipeResponse equipe(
         InferenciaFuncoesResponse inferencia,
         LadoDraft lado
     ) {
@@ -1033,7 +907,7 @@ public class RecomendacaoProximoPickService {
             : inferencia.equipeVermelha();
     }
 
-    private List<Heroi> carregarHerois(
+    private List<Heroi> heroisDosPicks(
         List<PickSemFuncaoRequest> picks
     ) {
         return picks.stream()
@@ -1041,7 +915,7 @@ public class RecomendacaoProximoPickService {
             .toList();
     }
 
-    private List<Heroi> carregarHeroisPorAtribuicao(
+    private List<Heroi> heroisDasAtribuicoes(
         List<AtribuicaoFuncaoResponse> atribuicoes
     ) {
         return atribuicoes.stream()
@@ -1049,14 +923,7 @@ public class RecomendacaoProximoPickService {
             .toList();
     }
 
-    private List<Heroi> carregarHerois(
-        List<AtribuicaoFuncaoResponse> atribuicoes,
-        boolean marcador
-    ) {
-        return carregarHeroisPorAtribuicao(atribuicoes);
-    }
-
-    private Heroi buscarHeroiNaRota(
+    private Heroi heroiNaRota(
         HipoteseFuncaoResponse hipotese,
         Rota rota
     ) {
@@ -1078,20 +945,19 @@ public class RecomendacaoProximoPickService {
     private Map<Integer, Long> mapaPicks(
         List<PickSemFuncaoRequest> picks
     ) {
-        Map<Integer, Long> mapa = new HashMap<>();
-        picks.forEach(pick -> mapa.put(pick.ordem(), pick.heroiId()));
-        return mapa;
+        Map<Integer, Long> resultado = new HashMap<>();
+        picks.forEach(pick -> resultado.put(pick.ordem(), pick.heroiId()));
+        return resultado;
     }
 
     private String meuSlot(RecomendacaoProximoPickRequest request) {
         if (request.meuLado() == null || request.minhaOrdem() == null) {
             return null;
         }
-
         return request.meuLado().prefixoSlot() + request.minhaOrdem();
     }
 
-    private RecomendacaoProximoPickResponse respostaSemRecomendacao(
+    private RecomendacaoProximoPickResponse semRecomendacao(
         String estado,
         String mensagem,
         RecomendacaoProximoPickRequest request,
@@ -1102,10 +968,10 @@ public class RecomendacaoProximoPickService {
     ) {
         InferenciaEquipeResponse aliados = request.meuLado() == null
             ? inferencia.equipeAzul()
-            : selecionarEquipe(inferencia, request.meuLado());
+            : equipe(inferencia, request.meuLado());
         InferenciaEquipeResponse inimigos = request.meuLado() == null
             ? inferencia.equipeVermelha()
-            : selecionarEquipe(inferencia, request.meuLado().adversario());
+            : equipe(inferencia, request.meuLado().adversario());
 
         return new RecomendacaoProximoPickResponse(
             VERSAO_MOTOR,
@@ -1135,7 +1001,7 @@ public class RecomendacaoProximoPickService {
             .orElse(0);
     }
 
-    private int arredondarMedia(
+    private int media(
         List<AvaliacaoCenario> cenarios,
         ToIntFunction<AvaliacaoCenario> extrator
     ) {
