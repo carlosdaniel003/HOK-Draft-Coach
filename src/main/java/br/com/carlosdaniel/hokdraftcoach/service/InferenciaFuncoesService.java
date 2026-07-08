@@ -387,9 +387,22 @@ public class InferenciaFuncoesService {
         String prefixo
     ) {
         List<PickInterno> picks = new ArrayList<>();
+        Set<Integer> ordens = new HashSet<>();
 
-        for (int indice = 0; indice < requests.size(); indice++) {
-            Long heroiId = requests.get(indice).heroiId();
+        List<PickSemFuncaoRequest> requestsOrdenados = requests
+            .stream()
+            .sorted(Comparator.comparing(PickSemFuncaoRequest::ordem))
+            .toList();
+
+        for (PickSemFuncaoRequest request : requestsOrdenados) {
+            if (!ordens.add(request.ordem())) {
+                throw new RegraNegocioException(
+                    "A ordem " + request.ordem()
+                        + " foi informada mais de uma vez no mesmo lado."
+                );
+            }
+
+            Long heroiId = request.heroiId();
             Heroi heroi = heroiService.buscarPorId(heroiId)
                 .orElseThrow(() -> new RegraNegocioException(
                     "Herói de ID " + heroiId + " não encontrado."
@@ -397,7 +410,7 @@ public class InferenciaFuncoesService {
 
             picks.add(
                 new PickInterno(
-                    prefixo + (indice + 1),
+                    prefixo + request.ordem(),
                     heroi
                 )
             );
