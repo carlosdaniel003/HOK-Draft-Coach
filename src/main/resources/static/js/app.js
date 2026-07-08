@@ -68,7 +68,11 @@ const estado = {
         AZUL: Array(5).fill(null),
         VERMELHO: Array(5).fill(null)
     },
-    slotAtual: null
+    slotAtual: null,
+    inferencia: null,
+    inferenciaCarregando: false,
+    inferenciaErro: "",
+    versaoRequisicaoInferencia: 0
 };
 
 const statusApi = document.querySelector("#status-api");
@@ -171,6 +175,7 @@ async function carregarHerois() {
 
         estado.herois = await resposta.json();
         renderizarTudo();
+        await atualizarInferenciaFuncoes();
     } catch (erro) {
         definirStatusApi(false, "Falha ao carregar heróis");
     }
@@ -472,6 +477,10 @@ function selecionarHeroi(heroiId) {
 
     fecharModal();
     renderizarTudo();
+
+    if (tipo === "PICK") {
+        atualizarInferenciaFuncoes();
+    }
 }
 
 function limparSlotAtual() {
@@ -486,6 +495,10 @@ function limparSlotAtual() {
 
     fecharModal();
     renderizarTudo();
+
+    if (tipo === "PICK") {
+        atualizarInferenciaFuncoes();
+    }
 }
 
 function obterHeroiSlot(tipo, lado, indice) {
@@ -682,13 +695,89 @@ function renderizarLeituraFlex() {
         .join("");
 }
 
-function renderizarHipotesesFuncao() {
-    const picksSelecionados = [
-        ...listarSlots("PICK", "AZUL"),
-        ...listarSlots("PICK", "VERMELHO")
-    ].filter((slot) => slot.heroi);
+async function atualizarInferenciaFuncoes() {
+    const versaoAtual = ++estado.versaoRequisicaoInferencia;
 
-    if (picksSelecionados.length === 0) {
+    estado.inferenciaCarregando = true;
+    estado.inferenciaErro = "";
+    renderizarHipotesesFuncao();
+
+    const corpo = {
+        picksAzul: montarPicksInferencia("AZUL"),
+        picksVermelho: montarPicksInferencia("VERMELHO")
+    };
+
+    try {
+        const resposta = await fetch("/api/draft/inferir-funcoes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(corpo)
+        });
+
+        if (!resposta.ok) {
+            throw new Error(await extrairMensagemErro(resposta));
+        }
+
+        const inferencia = await resposta.json();
+
+        if (versaoAtual !== estado.versaoRequisicaoInferencia) {
+            return;
+        }
+
+        estado.inferencia = inferencia;
+    } catch (erro) {
+        if (versaoAtual !== estado.versaoRequisicaoInferencia) {
+            return;
+        }
+
+        estado.inferencia = null;
+        estado.inferenciaErro = erro.message;
+    } finally {
+        if (versaoAtual === estado.versaoRequisicaoInferencia) {
+            estado.inferenciaCarregando = false;
+            renderizarHipotesesFuncao();
+        }
+    }
+}
+
+function montarPicksInferencia(lado) {
+    return estado.picks[lado]
+        .map((heroi, indice) => {
+            if (!heroi) {
+                return null;
+            }
+
+            return {
+                ordem: indice + 1,
+                heroiId: Number(heroi.id)
+            };
+        })
+        .filter(Boolean);
+}
+
+function renderizarHipotesesFuncao() {
+    if (estado.inferenciaCarregando) {
+        hipotesesFuncao.innerHTML = `
+            <div class="inferencia-carregando">
+                <span class="inferencia-carregando__circulo"></span>
+                Calculando combinações válidas de função...
+            </div>
+        `;
+        return;
+    }
+
+    if (estado.inferenciaErro) {
+        hipotesesFuncao.innerHTML = `
+            <div class="inferencia-erro">
+                ${escaparHtml(estado.inferenciaErro)}
+            </div>
+        `;
+        return;
+    }
+
+    if (!estado.inferencia) {
         hipotesesFuncao.innerHTML = `
             <p>
                 As possibilidades aparecerão conforme os heróis forem escolhidos.
@@ -697,18 +786,168 @@ function renderizarHipotesesFuncao() {
         return;
     }
 
-    hipotesesFuncao.innerHTML = picksSelecionados
-        .map((slot) => `
-            <div class="hipotese-item">
-                <strong>
-                    ${LADOS[slot.lado].prefixo}${slot.indice + 1}
-                    · ${escaparHtml(slot.heroi.nome)}
-                </strong>
+    hipotesesFuncao.innerHTML = `
+        <div class="inferencia-versao">
+            Motor ${escaparHtml(estado.inferencia.versaoMotor)}
+        </div>
 
-                <div>${criarChipsRotas(slot.heroi, true)}</div>
-            </div>
-        `)
+        <div class="inferencia-equipes">
+            ${criarPainelInferenciaEquipe(estado.inferencia.equipeAzul)}
+            ${criarPainelInferenciaEquipe(estado.inferencia.equipeVermelha)}
+        </div>
+    `;
+}
+
+function criarPainelInferenciaEquipe(equipe) {
+    const lado = equipe.lado;
+    const classeLado = lado.toLowerCase();
+
+    if (equipe.totalPicks === 0) {
+        return `
+            <section class="inferencia-equipe inferencia-equipe--${classeLado}">
+                <header class="inferencia-equipe__cabecalho">
+                    <strong>${LADOS[lado].nome}</strong>
+                    <span>Sem picks</span>
+                </header>
+
+                <p>Nenhuma função pode ser inferida ainda.</p>
+            </section>
+        `;
+    }
+
+    if (!equipe.composicaoCompativel) {
+        return `
+            <section class="inferencia-equipe inferencia-equipe--${classeLado}">
+                <header class="inferencia-equipe__cabecalho">
+                    <strong>${LADOS[lado].nome}</strong>
+                    <span class="confianca confianca--incompativel">
+                        Incompatível
+                    </span>
+                </header>
+
+                <div class="inferencia-conflito">
+                    Não existe distribuição válida sem repetir função.
+                </div>
+
+                ${criarListaAvisosInferencia(equipe.avisos)}
+            </section>
+        `;
+    }
+
+    const principal = equipe.hipoteses?.[0];
+    const ambiguidades = new Map(
+        (equipe.ambiguidades ?? []).map((item) => [item.slot, item])
+    );
+
+    const atribuicoes = principal?.atribuicoes ?? [];
+    const atribuicoesHtml = atribuicoes
+        .map((atribuicao) => {
+            const ambiguidade = ambiguidades.get(atribuicao.slot);
+            const confirmada = ambiguidade?.funcaoConfirmada;
+
+            return `
+                <div class="atribuicao-inferida">
+                    <div>
+                        <strong>
+                            ${escaparHtml(atribuicao.slot)}
+                            · ${escaparHtml(atribuicao.heroi)}
+                        </strong>
+
+                        <span>
+                            ${atribuirNomeRota(atribuicao.rota)}
+                        </span>
+                    </div>
+
+                    <span
+                        class="
+                            estado-funcao
+                            ${
+                                confirmada
+                                    ? "estado-funcao--confirmada"
+                                    : "estado-funcao--hipotese"
+                            }
+                        "
+                    >
+                        ${confirmada ? "Confirmada" : "Hipótese"}
+                    </span>
+                </div>
+            `;
+        })
         .join("");
+
+    const rotasAbertas = principal?.rotasAbertas ?? [];
+    const rotasAbertasHtml = rotasAbertas.length > 0
+        ? rotasAbertas
+            .map((rota) => `
+                <span class="rota-chip">
+                    ${atribuirNomeRota(rota)}
+                </span>
+            `)
+            .join("")
+        : `<span class="rotas-completas">Todas as funções preenchidas</span>`;
+
+    return `
+        <section class="inferencia-equipe inferencia-equipe--${classeLado}">
+            <header class="inferencia-equipe__cabecalho">
+                <div>
+                    <strong>${LADOS[lado].nome}</strong>
+                    <small>
+                        ${equipe.totalHipoteses} hipótese(s) válida(s)
+                    </small>
+                </div>
+
+                <span class="confianca confianca--${normalizarTexto(
+                    equipe.confiancaMelhorHipotese
+                )}">
+                    Confiança ${escaparHtml(equipe.confiancaMelhorHipotese)}
+                </span>
+            </header>
+
+            <div class="inferencia-equipe__pontuacao">
+                <span>Melhor hipótese</span>
+                <strong>${principal?.pontuacaoAfinidade ?? 0}/100</strong>
+            </div>
+
+            <div class="atribuicoes-inferidas">
+                ${atribuicoesHtml}
+            </div>
+
+            <div class="rotas-abertas">
+                <span>Funções ainda abertas</span>
+                <div>${rotasAbertasHtml}</div>
+            </div>
+
+            ${criarListaAvisosInferencia(equipe.avisos)}
+        </section>
+    `;
+}
+
+function criarListaAvisosInferencia(avisos = []) {
+    if (avisos.length === 0) {
+        return "";
+    }
+
+    return `
+        <ul class="avisos-inferencia">
+            ${avisos
+                .map((aviso) => `<li>${escaparHtml(aviso)}</li>`)
+                .join("")}
+        </ul>
+    `;
+}
+
+async function extrairMensagemErro(resposta) {
+    try {
+        const erro = await resposta.json();
+
+        if (Array.isArray(erro.detalhes) && erro.detalhes.length > 0) {
+            return erro.detalhes.join(" ");
+        }
+
+        return erro.erro || "Não foi possível inferir as funções.";
+    } catch (erro) {
+        return "Não foi possível inferir as funções.";
+    }
 }
 
 function criarChipsRotas(heroi, incluirFlex = false) {
@@ -744,6 +983,10 @@ function obterRotasHeroi(heroi) {
     return heroi.rota ? [heroi.rota] : [];
 }
 
+function atribuirNomeRota(rota) {
+    return escaparHtml(NOMES_ROTAS[rota] ?? rota);
+}
+
 function contarPreenchidos(colecaoPorLado) {
     return Object.values(colecaoPorLado)
         .flat()
@@ -756,11 +999,14 @@ function reiniciarDraft() {
     estado.bans.VERMELHO = Array(3).fill(null);
     estado.picks.AZUL = Array(5).fill(null);
     estado.picks.VERMELHO = Array(5).fill(null);
+    estado.inferencia = null;
+    estado.inferenciaErro = "";
 
     meuLadoSelect.value = "INDEFINIDO";
     minhaOrdemSelect.value = "";
 
     renderizarTudo();
+    atualizarInferenciaFuncoes();
 }
 
 function normalizarTexto(valor) {
