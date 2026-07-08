@@ -9,8 +9,11 @@ import br.com.carlosdaniel.hokdraftcoach.dto.AnaliseDraftResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.DraftRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesResponse;
+import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
+import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.service.DraftService;
 import br.com.carlosdaniel.hokdraftcoach.service.InferenciaFuncoesService;
+import br.com.carlosdaniel.hokdraftcoach.service.RecomendacaoProximoPickService;
 import jakarta.validation.Valid;
 
 @RestController
@@ -19,13 +22,16 @@ public class DraftController {
 
     private final DraftService draftService;
     private final InferenciaFuncoesService inferenciaFuncoesService;
+    private final RecomendacaoProximoPickService recomendacaoProximoPickService;
 
     public DraftController(
         DraftService draftService,
-        InferenciaFuncoesService inferenciaFuncoesService
+        InferenciaFuncoesService inferenciaFuncoesService,
+        RecomendacaoProximoPickService recomendacaoProximoPickService
     ) {
         this.draftService = draftService;
         this.inferenciaFuncoesService = inferenciaFuncoesService;
+        this.recomendacaoProximoPickService = recomendacaoProximoPickService;
     }
 
     @PostMapping("/recomendar")
@@ -40,5 +46,12 @@ public class DraftController {
         @Valid @RequestBody InferenciaFuncoesRequest request
     ) {
         return inferenciaFuncoesService.inferir(request);
+    }
+
+    @PostMapping("/recomendar-proximo-pick")
+    public RecomendacaoProximoPickResponse recomendarProximoPick(
+        @Valid @RequestBody RecomendacaoProximoPickRequest request
+    ) {
+        return recomendacaoProximoPickService.recomendar(request);
     }
 }
