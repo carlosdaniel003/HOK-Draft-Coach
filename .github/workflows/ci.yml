@@ -55,3 +55,6 @@ jobs:
           fi
 
           tail -n 30 maven.log
+
+      - name: Validar imagem da Vercel
+        run: docker build --file Dockerfile.vercel --tag hok-draft-coach:ci .
