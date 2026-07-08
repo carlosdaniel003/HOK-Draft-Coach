@@ -136,13 +136,13 @@ public class DraftService {
                     "Herói de ID " + escolha.heroiId() + " não encontrado."
                 ));
 
-            if (heroi.getRota() != escolha.rota()) {
+            if (!heroi.podeJogarNaRota(escolha.rota())) {
                 throw new RegraNegocioException(
                     heroi.getNome()
-                        + " está cadastrado para "
-                        + heroi.getRota()
-                        + ", não para "
+                        + " não está cadastrado para "
                         + escolha.rota()
+                        + ". Rotas possíveis: "
+                        + heroi.getRotasPossiveis()
                         + "."
                 );
             }
@@ -231,7 +231,7 @@ public class DraftService {
         return new RecomendacaoDraftResponse(
             candidato.getId(),
             candidato.getNome(),
-            candidato.getRota(),
+            rotaAlvo,
             pontuacaoFinal,
             calcularNivel(pontuacaoFinal),
             componentes,
@@ -342,7 +342,7 @@ public class DraftService {
             }
         }
 
-        if (pontuacao > 0 && aliados.size() > 0) {
+        if (pontuacao > 0 && !aliados.isEmpty()) {
             motivos.add("Complementa características já presentes nos aliados.");
         }
 
