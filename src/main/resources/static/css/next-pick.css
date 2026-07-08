@@ -1,0 +1,414 @@
+.painel-proximo-pick {
+    border: 1px solid rgba(215, 173, 88, 0.35);
+    border-radius: 18px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(215, 173, 88, 0.08),
+            rgba(16, 20, 28, 0.96) 30%,
+            rgba(16, 20, 28, 0.96)
+        );
+    box-shadow: var(--sombra);
+    overflow: hidden;
+}
+
+.painel-proximo-pick__cabecalho {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 24px;
+    border-bottom: 1px solid rgba(215, 173, 88, 0.16);
+}
+
+.painel-proximo-pick__cabecalho > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.painel-proximo-pick__cabecalho h2 {
+    margin-bottom: 4px;
+}
+
+.painel-proximo-pick__cabecalho p {
+    color: var(--texto-secundario);
+    font-size: 0.76rem;
+}
+
+.painel-proximo-pick__controles {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.preferencia-funcao {
+    display: grid;
+    gap: 6px;
+}
+
+.preferencia-funcao span {
+    color: var(--texto-secundario);
+    font-size: 0.61rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.preferencia-funcao select {
+    min-width: 160px;
+    padding: 10px 34px 10px 12px;
+    color: var(--texto);
+    border: 1px solid var(--borda);
+    border-radius: 9px;
+    background: var(--superficie-clara);
+    outline: none;
+}
+
+.preferencia-funcao select:focus {
+    border-color: var(--dourado);
+    box-shadow: 0 0 0 3px rgba(215, 173, 88, 0.1);
+}
+
+.coach-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    font-size: 0.61rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.coach-status--minha-vez {
+    color: var(--verde);
+    background: rgba(69, 212, 155, 0.1);
+}
+
+.coach-status--planejamento,
+.coach-status--carregando {
+    color: var(--dourado-claro);
+    background: rgba(215, 173, 88, 0.1);
+}
+
+.coach-status--fase-de-bans,
+.coach-status--configuracao-pendente,
+.coach-status--pick-registrado,
+.coach-status--draft-concluido {
+    color: #9aa7b8;
+    background: rgba(152, 163, 179, 0.1);
+}
+
+.coach-status--conflito-de-funcoes,
+.coach-status--sem-candidatos,
+.coach-status--erro {
+    color: var(--vermelho);
+    background: rgba(255, 105, 105, 0.1);
+}
+
+.conteudo-proximo-pick {
+    padding: 22px 24px 24px;
+}
+
+.coach-carregando,
+.coach-vazio {
+    min-height: 125px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    color: var(--texto-secundario);
+    border: 1px dashed var(--borda);
+    border-radius: 13px;
+    text-align: center;
+}
+
+.coach-vazio strong {
+    color: var(--texto);
+}
+
+.coach-vazio--erro {
+    color: var(--vermelho);
+    border-color: rgba(255, 105, 105, 0.28);
+    background: rgba(255, 105, 105, 0.045);
+}
+
+.coach-carregando__circulo {
+    width: 21px;
+    height: 21px;
+    border: 3px solid rgba(215, 173, 88, 0.18);
+    border-top-color: var(--dourado);
+    border-radius: 50%;
+    animation: girar-coach 700ms linear infinite;
+}
+
+@keyframes girar-coach {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.coach-resposta {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.7fr);
+    gap: 14px;
+}
+
+.coach-principal,
+.coach-alternativas {
+    border: 1px solid var(--borda);
+    border-radius: 14px;
+    background: rgba(7, 9, 14, 0.38);
+}
+
+.coach-principal {
+    padding: 18px;
+}
+
+.coach-principal__topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 15px;
+}
+
+.coach-principal__etiqueta {
+    display: inline-block;
+    margin-bottom: 7px;
+    color: var(--dourado);
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.coach-principal h3 {
+    margin-bottom: 8px;
+    font-size: clamp(1.45rem, 3vw, 2.25rem);
+    letter-spacing: -0.035em;
+}
+
+.coach-rotas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.coach-rotas span {
+    padding: 5px 8px;
+    color: #bdd0e5;
+    border-radius: 999px;
+    background: rgba(87, 168, 255, 0.1);
+    font-size: 0.61rem;
+    font-weight: 800;
+}
+
+.coach-nota {
+    display: flex;
+    align-items: baseline;
+    flex-shrink: 0;
+}
+
+.coach-nota strong {
+    color: var(--dourado-claro);
+    font-size: 2.45rem;
+    line-height: 1;
+}
+
+.coach-nota span {
+    color: var(--texto-secundario);
+    font-size: 0.7rem;
+}
+
+.coach-metricas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 15px;
+}
+
+.coach-metricas > span {
+    display: grid;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid rgba(40, 49, 64, 0.76);
+    border-radius: 9px;
+    background: rgba(16, 20, 28, 0.72);
+}
+
+.coach-metricas small {
+    color: var(--texto-secundario);
+    font-size: 0.58rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.coach-metricas strong {
+    font-size: 0.82rem;
+}
+
+.coach-mensagem {
+    margin-bottom: 15px;
+    color: #c6cfda;
+    font-size: 0.81rem;
+    line-height: 1.55;
+}
+
+.coach-explicacao {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.coach-explicacao > div {
+    padding: 13px;
+    border: 1px solid rgba(40, 49, 64, 0.74);
+    border-radius: 10px;
+    background: rgba(16, 20, 28, 0.66);
+}
+
+.coach-explicacao strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.72rem;
+}
+
+.coach-explicacao ul,
+.coach-avisos {
+    display: grid;
+    gap: 6px;
+    padding-left: 17px;
+}
+
+.coach-explicacao li,
+.coach-avisos li {
+    color: var(--texto-secundario);
+    font-size: 0.68rem;
+    line-height: 1.45;
+}
+
+.coach-alternativas {
+    padding: 15px;
+}
+
+.coach-alternativas__cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 11px;
+}
+
+.coach-alternativas__cabecalho span {
+    font-size: 0.75rem;
+    font-weight: 850;
+}
+
+.coach-alternativas__cabecalho small {
+    color: var(--texto-secundario);
+    font-size: 0.59rem;
+}
+
+.coach-alternativa {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 10px;
+    border: 1px solid rgba(40, 49, 64, 0.76);
+    border-radius: 9px;
+    background: rgba(16, 20, 28, 0.68);
+}
+
+.coach-alternativa + .coach-alternativa {
+    margin-top: 7px;
+}
+
+.coach-alternativa__ordem {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    color: var(--dourado-claro);
+    border-radius: 7px;
+    background: rgba(215, 173, 88, 0.1);
+    font-size: 0.65rem;
+    font-weight: 900;
+}
+
+.coach-alternativa div strong {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.75rem;
+}
+
+.coach-alternativa div small {
+    color: var(--texto-secundario);
+    font-size: 0.58rem;
+}
+
+.coach-alternativa__nota {
+    color: var(--dourado-claro);
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.coach-avisos {
+    margin-top: 12px;
+    padding: 10px 10px 10px 25px;
+    border: 1px solid rgba(232, 186, 88, 0.16);
+    border-radius: 9px;
+    background: rgba(232, 186, 88, 0.045);
+}
+
+.coach-sem-alternativas {
+    color: var(--texto-secundario);
+    font-size: 0.69rem;
+}
+
+@media (max-width: 920px) {
+    .painel-proximo-pick__cabecalho,
+    .coach-principal__topo {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .painel-proximo-pick__controles {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .preferencia-funcao,
+    .preferencia-funcao select {
+        width: 100%;
+    }
+
+    .coach-resposta {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+    .painel-proximo-pick__cabecalho,
+    .conteudo-proximo-pick {
+        padding: 16px;
+    }
+
+    .coach-metricas,
+    .coach-explicacao {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 430px) {
+    .coach-metricas,
+    .coach-explicacao {
+        grid-template-columns: 1fr;
+    }
+}
