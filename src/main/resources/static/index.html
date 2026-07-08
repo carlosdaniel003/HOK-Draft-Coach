@@ -2,240 +2,251 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
-
     <meta
         name="description"
-        content="Sistema de recomendação de draft para Honor of Kings"
+        content="Simulador e coach de draft para Honor of Kings"
     >
 
     <title>HOK Draft Coach</title>
 
     <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/draft-engine.css">
+    <link rel="stylesheet" href="/css/game-draft.css">
     <script src="/js/app.js" defer></script>
 </head>
 
 <body>
-    <header class="cabecalho">
+    <header class="cabecalho cabecalho--draft">
         <div class="cabecalho__conteudo">
             <div>
                 <span class="cabecalho__etiqueta">
-                    Draft Intelligence
+                    Pick & Ban Intelligence
                 </span>
 
                 <h1>HOK Draft Coach</h1>
 
                 <p>
-                    Monte as duas equipes, deixe uma posição aliada vazia
-                    e receba recomendações explicadas para completar o draft.
+                    Registre o draft na mesma ordem da partida.
+                    As funções são inferidas depois dos picks, incluindo heróis flex.
                 </p>
             </div>
 
-            <div class="cabecalho__acoes">
+            <div class="cabecalho__painel">
                 <span id="status-api" class="status-api">
                     <span class="status-api__indicador"></span>
                     <span id="status-api-texto">Verificando API</span>
                 </span>
+
+                <label class="controle-draft" for="meu-lado">
+                    <span>Meu lado</span>
+                    <select id="meu-lado">
+                        <option value="INDEFINIDO">Ainda não sei</option>
+                        <option value="AZUL">Lado azul</option>
+                        <option value="VERMELHO">Lado vermelho</option>
+                    </select>
+                </label>
+
+                <label class="controle-draft" for="minha-ordem">
+                    <span>Minha ordem</span>
+                    <select id="minha-ordem">
+                        <option value="">Ainda não sei</option>
+                        <option value="1">Jogador 1</option>
+                        <option value="2">Jogador 2</option>
+                        <option value="3">Jogador 3</option>
+                        <option value="4">Jogador 4</option>
+                        <option value="5">Jogador 5</option>
+                    </select>
+                </label>
 
                 <button
                     id="botao-limpar"
                     class="botao-secundario"
                     type="button"
                 >
-                    Limpar draft
+                    Reiniciar draft
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="conteudo">
-        <section class="painel-draft">
-            <div class="painel-draft__topo">
+    <main class="conteudo conteudo--draft-game">
+        <section class="estado-draft">
+            <div>
+                <span id="fase-draft" class="fase-draft">
+                    Fase de bans
+                </span>
+
+                <h2 id="proxima-acao">
+                    Registre os três bans de cada equipe
+                </h2>
+
+                <p id="descricao-acao">
+                    Os picks serão liberados visualmente quando os seis bans estiverem preenchidos.
+                </p>
+            </div>
+
+            <div class="progresso-draft">
+                <div class="progresso-draft__numeros">
+                    <strong id="progresso-atual">0</strong>
+                    <span>/ 16 ações</span>
+                </div>
+
+                <div class="progresso-draft__trilha">
+                    <span id="progresso-barra"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="painel-fase">
+            <div class="painel-fase__cabecalho">
                 <div>
                     <span class="numero-etapa">01</span>
-
                     <div>
-                        <h2>Composição das equipes</h2>
-
-                        <p>
-                            Cada slot aceita somente heróis cadastrados
-                            para a respectiva rota.
-                        </p>
+                        <h2>Fase de bans</h2>
+                        <p>Três heróis removidos por cada lado antes dos picks.</p>
                     </div>
                 </div>
 
-                <span id="contador-draft" class="contador-draft">
-                    0 de 10 escolhas
+                <span id="contador-bans" class="contador-draft">
+                    0 de 6 bans
                 </span>
             </div>
 
-            <div class="draft">
-                <section class="equipe equipe--aliada">
-                    <div class="equipe__cabecalho">
+            <div class="ban-board">
+                <section class="lado-draft lado-draft--azul">
+                    <header class="lado-draft__cabecalho">
+                        <span class="lado-draft__cor"></span>
                         <div>
-                            <span class="equipe__tipo">Sua composição</span>
-                            <h3>Equipe aliada</h3>
+                            <small>Blue Side</small>
+                            <h3>Lado azul</h3>
                         </div>
+                    </header>
 
-                        <span class="equipe__lado">Blue Side</span>
-                    </div>
-
-                    <div
-                        id="slots-aliados"
-                        class="slots-equipe"
-                    ></div>
+                    <div id="bans-azul" class="bans-equipe"></div>
                 </section>
 
-                <div class="draft__centro">
-                    <span class="draft__linha"></span>
-
-                    <div class="draft__versus">
-                        VS
-                    </div>
-
-                    <span class="draft__linha"></span>
+                <div class="fase-divisor">
+                    <span>3</span>
+                    <small>bans</small>
+                    <span>×</span>
+                    <span>3</span>
                 </div>
 
-                <section class="equipe equipe--inimiga">
-                    <div class="equipe__cabecalho">
+                <section class="lado-draft lado-draft--vermelho">
+                    <header class="lado-draft__cabecalho lado-draft__cabecalho--direita">
                         <div>
-                            <span class="equipe__tipo">
-                                Composição adversária
-                            </span>
-
-                            <h3>Equipe inimiga</h3>
+                            <small>Red Side</small>
+                            <h3>Lado vermelho</h3>
                         </div>
+                        <span class="lado-draft__cor"></span>
+                    </header>
 
-                        <span class="equipe__lado">Red Side</span>
-                    </div>
-
-                    <div
-                        id="slots-inimigos"
-                        class="slots-equipe"
-                    ></div>
+                    <div id="bans-vermelho" class="bans-equipe"></div>
                 </section>
             </div>
         </section>
 
-        <section class="painel-analise">
-            <div class="painel-analise__cabecalho">
+        <section class="painel-fase">
+            <div class="painel-fase__cabecalho">
                 <div>
                     <span class="numero-etapa">02</span>
-
                     <div>
-                        <h2>Recomendação do coach</h2>
-
+                        <h2>Fase de picks</h2>
                         <p>
-                            Escolha a rota aliada que o motor deverá completar.
+                            O lado azul abre. A sequência é 1–2–2–2–2–1.
                         </p>
                     </div>
                 </div>
 
-                <div class="painel-analise__acoes">
-                    <label class="campo-rota-alvo" for="rota-alvo">
-                        <span>Rota a recomendar</span>
-
-                        <select id="rota-alvo">
-                            <option value="CLASH_LANE">Clash Lane</option>
-                            <option value="JUNGLE">Jungle</option>
-                            <option value="MID_LANE">Mid Lane</option>
-                            <option value="FARM_LANE" selected>Farm Lane</option>
-                            <option value="ROAMING">Roaming</option>
-                        </select>
-                    </label>
-
-                    <button
-                        id="botao-analisar"
-                        class="botao-principal"
-                        type="button"
-                    >
-                        Analisar draft
-                    </button>
-                </div>
+                <span id="contador-picks" class="contador-draft">
+                    0 de 10 picks
+                </span>
             </div>
 
-            <p
-                id="mensagem-erro"
-                class="mensagem-erro"
-                role="alert"
-            ></p>
+            <div class="pick-board">
+                <section class="time-picks time-picks--azul">
+                    <header class="time-picks__cabecalho">
+                        <div>
+                            <span class="time-picks__etiqueta">Blue Side</span>
+                            <h3>Lado azul</h3>
+                        </div>
+                        <span class="time-picks__primeiro">First Pick</span>
+                    </header>
 
-            <div
-                id="estado-inicial"
-                class="estado-inicial"
-            >
-                <div class="estado-inicial__icone">
-                    M
-                </div>
+                    <div id="picks-azul" class="picks-equipe"></div>
+                </section>
 
+                <section class="ordem-picks">
+                    <span class="ordem-picks__titulo">Ordem do draft</span>
+                    <div id="sequencia-picks" class="sequencia-picks"></div>
+                </section>
+
+                <section class="time-picks time-picks--vermelho">
+                    <header class="time-picks__cabecalho time-picks__cabecalho--direita">
+                        <div>
+                            <span class="time-picks__etiqueta">Red Side</span>
+                            <h3>Lado vermelho</h3>
+                        </div>
+                        <span class="time-picks__ultimo">Last Pick</span>
+                    </header>
+
+                    <div id="picks-vermelho" class="picks-equipe"></div>
+                </section>
+            </div>
+        </section>
+
+        <section class="leitura-draft">
+            <div class="leitura-draft__cabecalho">
                 <div>
-                    <h3>Motor aguardando o draft</h3>
-
-                    <p>
-                        Mantenha vazio o slot aliado da rota selecionada.
-                        As demais escolhas podem ser preenchidas parcialmente.
-                    </p>
-                </div>
-            </div>
-
-            <div
-                id="carregamento"
-                class="carregamento oculto"
-            >
-                <span class="carregamento__circulo"></span>
-
-                <div>
-                    <strong>Analisando composição</strong>
-                    <p>
-                        Calculando confronto, sinergia, composição
-                        e resposta aos inimigos.
-                    </p>
-                </div>
-            </div>
-
-            <div
-                id="resultado-analise"
-                class="resultado-analise oculto"
-            >
-                <div class="resultado-analise__resumo">
+                    <span class="numero-etapa">03</span>
                     <div>
-                        <span class="resultado-analise__etiqueta">
-                            Rota recomendada
-                        </span>
-
-                        <strong id="rota-analisada">
-                            —
-                        </strong>
-                    </div>
-
-                    <div class="resultado-analise__metadados">
-                        <span id="versao-dados" class="versao-dados">
-                            —
-                        </span>
-
-                        <span id="quantidade-resultados">
-                            0 recomendações
-                        </span>
+                        <h2>Leitura do coach</h2>
+                        <p>
+                            O sistema registra picks sem travar função e destaca possibilidades flexíveis.
+                        </p>
                     </div>
                 </div>
 
-                <div
-                    id="lista-recomendacoes"
-                    class="lista-recomendacoes"
-                ></div>
+                <span class="leitura-draft__status">
+                    Motor de funções em adaptação
+                </span>
+            </div>
 
-                <aside
-                    id="painel-avisos"
-                    class="painel-avisos oculto"
-                >
-                    <strong>Avisos da análise</strong>
-                    <ul id="lista-avisos"></ul>
-                </aside>
+            <div class="leitura-cards">
+                <article class="leitura-card">
+                    <span>Próxima movimentação</span>
+                    <strong id="resumo-proxima-acao">Fase de bans</strong>
+                    <p id="resumo-proxima-descricao">
+                        Preencha os bans disponíveis dos dois lados.
+                    </p>
+                </article>
+
+                <article class="leitura-card">
+                    <span>Minha posição no draft</span>
+                    <strong id="resumo-minha-posicao">Não definida</strong>
+                    <p>
+                        Escolha seu lado e a ordem depois que a partida informar.
+                    </p>
+                </article>
+
+                <article class="leitura-card leitura-card--largo">
+                    <span>Heróis flex identificados</span>
+                    <div id="lista-flex" class="lista-flex">
+                        <p>Nenhum herói flex selecionado.</p>
+                    </div>
+                </article>
+
+                <article class="leitura-card leitura-card--largo">
+                    <span>Hipóteses de função</span>
+                    <div id="hipoteses-funcao" class="hipoteses-funcao">
+                        <p>
+                            As possibilidades aparecerão conforme os heróis forem escolhidos.
+                        </p>
+                    </div>
+                </article>
             </div>
         </section>
     </main>
@@ -245,29 +256,22 @@
         class="modal oculto"
         aria-hidden="true"
     >
-        <div
-            id="modal-overlay"
-            class="modal__overlay"
-        ></div>
+        <div id="modal-overlay" class="modal__overlay"></div>
 
         <section
-            class="modal__conteudo"
+            class="modal__conteudo modal__conteudo--draft"
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-titulo"
         >
             <div class="modal__cabecalho">
                 <div>
-                    <span class="modal__etiqueta">
+                    <span id="modal-etiqueta" class="modal__etiqueta">
                         Seleção de herói
                     </span>
-
-                    <h2 id="modal-titulo">
-                        Escolha um herói
-                    </h2>
-
+                    <h2 id="modal-titulo">Escolha um herói</h2>
                     <p id="modal-descricao">
-                        Selecione o herói para esta posição.
+                        Heróis banidos ou já escolhidos ficam indisponíveis.
                     </p>
                 </div>
 
@@ -281,19 +285,25 @@
                 </button>
             </div>
 
-            <div class="campo-pesquisa">
+            <div class="campo-pesquisa campo-pesquisa--draft">
                 <input
                     id="pesquisa-heroi"
                     type="search"
-                    placeholder="Pesquisar pelo nome..."
+                    placeholder="Pesquisar herói..."
                     autocomplete="off"
                 >
+
+                <select id="filtro-rota" aria-label="Filtrar por função possível">
+                    <option value="">Todas as funções</option>
+                    <option value="CLASH_LANE">Clash Lane</option>
+                    <option value="JUNGLE">Jungle</option>
+                    <option value="MID_LANE">Mid Lane</option>
+                    <option value="FARM_LANE">Farm Lane</option>
+                    <option value="ROAMING">Roaming</option>
+                </select>
             </div>
 
-            <div
-                id="lista-herois-modal"
-                class="grade-herois"
-            ></div>
+            <div id="lista-herois-modal" class="grade-herois"></div>
 
             <div class="modal__rodape">
                 <button
@@ -301,14 +311,14 @@
                     class="botao-perigo oculto"
                     type="button"
                 >
-                    Remover herói deste slot
+                    Limpar este slot
                 </button>
             </div>
         </section>
     </div>
 
     <footer class="rodape">
-        Java 21 · Spring Boot · Motor de draft em desenvolvimento
+        Java 21 · Spring Boot · Draft 5v5 com picks flexíveis
     </footer>
 </body>
 </html>
