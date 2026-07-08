@@ -26,11 +26,25 @@ const ROTAS = [
     }
 ];
 
+const ROTAS_POR_CODIGO = Object.fromEntries(
+    ROTAS.map((rota) => [rota.codigo, rota])
+);
+
+const ROTULOS_COMPONENTES = {
+    base: "Base",
+    confronto: "Confronto",
+    sinergia: "Sinergia",
+    composicao: "Composição",
+    respostaAosInimigos: "Resposta",
+    acessibilidade: "Execução"
+};
+
 const estado = {
     herois: [],
     aliados: Array(5).fill(null),
     inimigos: Array(5).fill(null),
-    slotAtual: null
+    slotAtual: null,
+    analisando: false
 };
 
 const slotsAliados = document.querySelector("#slots-aliados");
@@ -39,24 +53,34 @@ const slotsInimigos = document.querySelector("#slots-inimigos");
 const contadorDraft = document.querySelector("#contador-draft");
 const botaoLimpar = document.querySelector("#botao-limpar");
 const botaoAnalisar = document.querySelector("#botao-analisar");
+const rotaAlvoSelect = document.querySelector("#rota-alvo");
+
+const statusApi = document.querySelector("#status-api");
+const statusApiTexto = document.querySelector("#status-api-texto");
 
 const mensagemErro = document.querySelector("#mensagem-erro");
 const estadoInicial = document.querySelector("#estado-inicial");
 const carregamento = document.querySelector("#carregamento");
 const resultadoAnalise = document.querySelector("#resultado-analise");
 
-const heroiAnalisado = document.querySelector("#heroi-analisado");
+const rotaAnalisada = document.querySelector("#rota-analisada");
+const versaoDados = document.querySelector("#versao-dados");
 const quantidadeResultados = document.querySelector(
     "#quantidade-resultados"
 );
 const listaRecomendacoes = document.querySelector(
     "#lista-recomendacoes"
 );
+const painelAvisos = document.querySelector("#painel-avisos");
+const listaAvisos = document.querySelector("#lista-avisos");
 
 const modalHerois = document.querySelector("#modal-herois");
 const modalOverlay = document.querySelector("#modal-overlay");
 const botaoFecharModal = document.querySelector(
     "#botao-fechar-modal"
+);
+const botaoRemoverHeroi = document.querySelector(
+    "#botao-remover-heroi"
 );
 const modalTitulo = document.querySelector("#modal-titulo");
 const modalDescricao = document.querySelector("#modal-descricao");
@@ -69,6 +93,13 @@ document.addEventListener("DOMContentLoaded", iniciarAplicacao);
 
 botaoLimpar.addEventListener("click", limparDraft);
 botaoAnalisar.addEventListener("click", analisarDraft);
+botaoRemoverHeroi.addEventListener("click", removerHeroiAtual);
+
+rotaAlvoSelect.addEventListener("change", () => {
+    limparErro();
+    limparAnaliseAnterior();
+    renderizarDraft();
+});
 
 botaoFecharModal.addEventListener("click", fecharModal);
 modalOverlay.addEventListener("click", fecharModal);
@@ -85,7 +116,29 @@ document.addEventListener("keydown", (evento) => {
 
 async function iniciarAplicacao() {
     renderizarDraft();
+    atualizarBotaoAnalise();
 
+    await Promise.all([
+        verificarStatusApi(),
+        carregarHerois()
+    ]);
+}
+
+async function verificarStatusApi() {
+    try {
+        const resposta = await fetch("/api/status");
+
+        if (!resposta.ok) {
+            throw new Error("API indisponível");
+        }
+
+        definirStatusApi(true, "API online");
+    } catch (erro) {
+        definirStatusApi(false, "API indisponível");
+    }
+}
+
+async function carregarHerois() {
     try {
         const resposta = await fetch("/api/herois");
 
@@ -94,9 +147,16 @@ async function iniciarAplicacao() {
         }
 
         estado.herois = await resposta.json();
+        atualizarBotaoAnalise();
     } catch (erro) {
         mostrarErro(erro.message);
+        atualizarBotaoAnalise();
     }
+}
+
+function definirStatusApi(online, texto) {
+    statusApi.classList.toggle("status-api--offline", !online);
+    statusApiTexto.textContent = texto;
 }
 
 function renderizarDraft() {
@@ -108,19 +168,28 @@ function renderizarDraft() {
 }
 
 function criarSlots(equipe) {
+    const rotaAlvo = rotaAlvoSelect.value;
+
     return ROTAS.map((rota, indice) => {
         const heroi = estado[equipe][indice];
         const preenchido = Boolean(heroi);
+        const slotAlvo =
+            equipe === "aliados" && rota.codigo === rotaAlvo;
+        const alvoVazio = slotAlvo && !preenchido;
+        const alvoPreenchido = slotAlvo && preenchido;
 
         return `
             <button
                 class="
                     slot-heroi
                     ${preenchido ? "slot-heroi--preenchido" : ""}
+                    ${alvoVazio ? "slot-heroi--alvo" : ""}
+                    ${alvoPreenchido ? "slot-heroi--alvo-invalido" : ""}
                 "
                 type="button"
                 data-equipe="${equipe}"
                 data-indice="${indice}"
+                title="Selecionar herói para ${rota.nome}"
             >
                 <span class="slot-heroi__icone">
                     ${
@@ -139,13 +208,21 @@ function criarSlots(equipe) {
                         ${
                             preenchido
                                 ? escaparHtml(heroi.nome)
-                                : "Selecionar herói"
+                                : alvoVazio
+                                    ? "Slot da recomendação"
+                                    : "Selecionar herói"
                         }
                     </span>
                 </span>
 
                 <span class="slot-heroi__acao">
-                    ${preenchido ? "↻" : "+"}
+                    ${
+                        alvoVazio
+                            ? "ALVO"
+                            : preenchido
+                                ? "↻"
+                                : "+"
+                    }
                 </span>
             </button>
         `;
@@ -172,6 +249,7 @@ function abrirModal(equipe, indice) {
     };
 
     const rota = ROTAS[indice];
+    const heroiAtual = estado[equipe][indice];
     const nomeEquipe =
         equipe === "aliados"
             ? "Equipe aliada"
@@ -180,9 +258,14 @@ function abrirModal(equipe, indice) {
     modalTitulo.textContent = rota.nome;
 
     modalDescricao.textContent =
-        `${nomeEquipe} · Selecione um herói para esta posição.`;
+        `${nomeEquipe} · Escolha entre os heróis de ${rota.nome}.`;
 
     pesquisaHeroi.value = "";
+
+    botaoRemoverHeroi.classList.toggle(
+        "oculto",
+        !heroiAtual
+    );
 
     renderizarHeroisDoModal();
 
@@ -200,9 +283,15 @@ function fecharModal() {
 }
 
 function renderizarHeroisDoModal(filtro = "") {
-    const termo = normalizarTexto(filtro);
+    if (!estado.slotAtual) {
+        return;
+    }
 
-    const heroisFiltrados = [...estado.herois]
+    const termo = normalizarTexto(filtro);
+    const rota = ROTAS[estado.slotAtual.indice];
+
+    const heroisFiltrados = estado.herois
+        .filter((heroi) => heroi.rota === rota.codigo)
         .filter((heroi) =>
             normalizarTexto(heroi.nome).includes(termo)
         )
@@ -213,7 +302,7 @@ function renderizarHeroisDoModal(filtro = "") {
     if (heroisFiltrados.length === 0) {
         listaHeroisModal.innerHTML = `
             <div class="sem-resultados">
-                Nenhum herói encontrado.
+                Nenhum herói de ${escaparHtml(rota.nome)} encontrado.
             </div>
         `;
 
@@ -222,14 +311,20 @@ function renderizarHeroisDoModal(filtro = "") {
 
     listaHeroisModal.innerHTML = heroisFiltrados
         .map((heroi) => {
-            const selecionado = heroiJaSelecionado(heroi.id);
+            const selecionadoEmOutroSlot =
+                heroiSelecionadoEmOutroSlot(heroi.id);
+
+            const atributos = heroi.atributos
+                ? `Controle ${heroi.atributos.controle} · `
+                    + `Mobilidade ${heroi.atributos.mobilidade}`
+                : heroi.estilo;
 
             return `
                 <button
                     class="heroi-opcao"
                     type="button"
                     data-heroi-id="${heroi.id}"
-                    ${selecionado ? "disabled" : ""}
+                    ${selecionadoEmOutroSlot ? "disabled" : ""}
                 >
                     <strong>
                         ${escaparHtml(heroi.nome)}
@@ -238,6 +333,10 @@ function renderizarHeroisDoModal(filtro = "") {
                     <span>
                         ${escaparHtml(heroi.estilo)}
                     </span>
+
+                    <small>
+                        ${escaparHtml(atributos)}
+                    </small>
                 </button>
             `;
         })
@@ -269,22 +368,55 @@ function selecionarHeroi(heroiId) {
     }
 
     const { equipe, indice } = estado.slotAtual;
+    const rota = ROTAS[indice];
+
+    if (heroi.rota !== rota.codigo) {
+        mostrarErro(
+            `${heroi.nome} não está cadastrado para ${rota.nome}.`
+        );
+        return;
+    }
 
     estado[equipe][indice] = heroi;
 
     fecharModal();
     renderizarDraft();
     limparAnaliseAnterior();
+    limparErro();
 }
 
-function heroiJaSelecionado(heroiId) {
-    const todosSelecionados = [
-        ...estado.aliados,
-        ...estado.inimigos
-    ].filter(Boolean);
+function removerHeroiAtual() {
+    if (!estado.slotAtual) {
+        return;
+    }
 
-    return todosSelecionados.some(
-        (heroi) => Number(heroi.id) === Number(heroiId)
+    const { equipe, indice } = estado.slotAtual;
+
+    estado[equipe][indice] = null;
+
+    fecharModal();
+    renderizarDraft();
+    limparAnaliseAnterior();
+    limparErro();
+}
+
+function heroiSelecionadoEmOutroSlot(heroiId) {
+    const atual = estado.slotAtual;
+
+    return ["aliados", "inimigos"].some((equipe) =>
+        estado[equipe].some((heroi, indice) => {
+            if (!heroi) {
+                return false;
+            }
+
+            const mesmoSlot =
+                atual
+                && atual.equipe === equipe
+                && atual.indice === indice;
+
+            return !mesmoSlot
+                && Number(heroi.id) === Number(heroiId);
+        })
     );
 }
 
@@ -292,8 +424,7 @@ function limparDraft() {
     estado.aliados = Array(5).fill(null);
     estado.inimigos = Array(5).fill(null);
 
-    mensagemErro.textContent = "";
-
+    limparErro();
     renderizarDraft();
     limparAnaliseAnterior();
 }
@@ -304,7 +435,12 @@ function limparAnaliseAnterior() {
     estadoInicial.classList.remove("oculto");
 
     listaRecomendacoes.innerHTML = "";
-    mensagemErro.textContent = "";
+    listaAvisos.innerHTML = "";
+    painelAvisos.classList.add("oculto");
+
+    rotaAnalisada.textContent = "—";
+    versaoDados.textContent = "—";
+    quantidadeResultados.textContent = "0 recomendações";
 }
 
 function atualizarContador() {
@@ -318,95 +454,155 @@ function atualizarContador() {
 }
 
 async function analisarDraft() {
-    mensagemErro.textContent = "";
+    limparErro();
 
-    const indiceFarmLane = ROTAS.findIndex(
-        (rota) => rota.codigo === "FARM_LANE"
+    const rotaAlvo = rotaAlvoSelect.value;
+    const indiceRotaAlvo = ROTAS.findIndex(
+        (rota) => rota.codigo === rotaAlvo
     );
 
-    const inimigoFarmLane =
-        estado.inimigos[indiceFarmLane];
+    if (indiceRotaAlvo < 0) {
+        mostrarErro("Selecione uma rota válida para a recomendação.");
+        return;
+    }
 
-    if (!inimigoFarmLane) {
+    if (estado.aliados[indiceRotaAlvo]) {
         mostrarErro(
-            "Selecione o herói inimigo da Farm Lane antes de analisar."
+            "O slot aliado da rota recomendada deve permanecer vazio. "
+            + "Remova o herói desse slot ou escolha outra rota."
         );
-
         return;
     }
 
     iniciarCarregamento();
 
-    try {
-        const endereco =
-            "/api/recomendacoes/counter?inimigo=" +
-            encodeURIComponent(inimigoFarmLane.nome);
+    const corpo = {
+        rotaAlvo,
+        aliados: montarEscolhas(estado.aliados),
+        inimigos: montarEscolhas(estado.inimigos)
+    };
 
-        const resposta = await fetch(endereco);
+    try {
+        const resposta = await fetch("/api/draft/recomendar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(corpo)
+        });
 
         if (!resposta.ok) {
-            throw new Error(
-                "Não foi possível analisar o draft."
-            );
+            throw new Error(await extrairMensagemErro(resposta));
         }
 
-        const recomendacoes = await resposta.json();
+        const analise = await resposta.json();
 
-        renderizarRecomendacoes(
-            inimigoFarmLane,
-            recomendacoes
-        );
+        renderizarAnalise(analise);
     } catch (erro) {
-        carregamento.classList.add("oculto");
+        finalizarCarregamento();
         estadoInicial.classList.remove("oculto");
-
         mostrarErro(erro.message);
     }
 }
 
+function montarEscolhas(equipe) {
+    return equipe
+        .map((heroi, indice) => {
+            if (!heroi) {
+                return null;
+            }
+
+            return {
+                rota: ROTAS[indice].codigo,
+                heroiId: Number(heroi.id)
+            };
+        })
+        .filter(Boolean);
+}
+
 function iniciarCarregamento() {
+    estado.analisando = true;
+    atualizarBotaoAnalise();
+
     estadoInicial.classList.add("oculto");
     resultadoAnalise.classList.add("oculto");
     carregamento.classList.remove("oculto");
 }
 
-function renderizarRecomendacoes(
-    inimigo,
-    recomendacoes
-) {
+function finalizarCarregamento() {
+    estado.analisando = false;
+    atualizarBotaoAnalise();
     carregamento.classList.add("oculto");
+}
+
+function atualizarBotaoAnalise() {
+    const bloqueado =
+        estado.analisando || estado.herois.length === 0;
+
+    botaoAnalisar.disabled = bloqueado;
+    botaoAnalisar.textContent = estado.analisando
+        ? "Analisando..."
+        : "Analisar draft";
+}
+
+function renderizarAnalise(analise) {
+    finalizarCarregamento();
     resultadoAnalise.classList.remove("oculto");
 
-    heroiAnalisado.textContent = inimigo.nome;
+    const rota = ROTAS_POR_CODIGO[analise.rotaAlvo];
+    const recomendacoes = analise.recomendacoes ?? [];
+    const totalCandidatos = analise.totalCandidatos ?? 0;
+
+    rotaAnalisada.textContent = rota?.nome ?? analise.rotaAlvo;
+    versaoDados.textContent = analise.versaoDados ?? "Sem versão";
 
     quantidadeResultados.textContent =
-        `${recomendacoes.length} recomendações`;
+        `${recomendacoes.length} recomendações de `
+        + `${totalCandidatos} candidatos`;
 
     if (recomendacoes.length === 0) {
         listaRecomendacoes.innerHTML = `
             <div class="sem-resultados">
-                Ainda não existem recomendações cadastradas
-                contra ${escaparHtml(inimigo.nome)}.
+                Nenhum herói disponível para esta rota.
             </div>
         `;
-
-        return;
+    } else {
+        listaRecomendacoes.innerHTML = recomendacoes
+            .map((recomendacao, indice) =>
+                criarCardRecomendacao(recomendacao, indice)
+            )
+            .join("");
     }
 
-    listaRecomendacoes.innerHTML = recomendacoes
-        .map((recomendacao, indice) =>
-            criarCardRecomendacao(recomendacao, indice)
-        )
-        .join("");
+    renderizarAvisos(analise.avisos ?? []);
 }
 
-function criarCardRecomendacao(
-    recomendacao,
-    indice
-) {
-    const classeNivel = recomendacao.nivel
-        .toLowerCase()
-        .replaceAll("_", "-");
+function criarCardRecomendacao(recomendacao, indice) {
+    const classeNivel = normalizarClasse(recomendacao.nivel);
+    const componentes = Object.entries(
+        recomendacao.componentes ?? {}
+    );
+    const motivos = recomendacao.motivos ?? [];
+
+    const componentesHtml = componentes
+        .map(([nome, valor]) => `
+            <span class="componente-pontuacao">
+                <small>
+                    ${escaparHtml(ROTULOS_COMPONENTES[nome] ?? nome)}
+                </small>
+
+                <strong class="${valor < 0 ? "valor-negativo" : ""}">
+                    ${formatarPontuacaoComponente(nome, valor)}
+                </strong>
+            </span>
+        `)
+        .join("");
+
+    const motivosHtml = motivos
+        .map((motivo) => `
+            <li>${escaparHtml(motivo)}</li>
+        `)
+        .join("");
 
     return `
         <article class="card-recomendacao">
@@ -417,29 +613,86 @@ function criarCardRecomendacao(
                     </span>
 
                     <h3>
-                        ${escaparHtml(recomendacao.recomendado)}
+                        ${escaparHtml(recomendacao.nome)}
                     </h3>
                 </div>
 
                 <div class="card-recomendacao__pontuacao">
-                    ${recomendacao.pontuacao}
+                    ${recomendacao.pontuacaoFinal}
                     <small>/100</small>
                 </div>
             </div>
 
-            <span class="nivel nivel--${classeNivel}">
-                ${escaparHtml(recomendacao.nivel)}
-            </span>
+            <div class="card-recomendacao__status">
+                <span class="nivel nivel--${classeNivel}">
+                    ${escaparHtml(recomendacao.nivel)}
+                </span>
 
-            <p class="card-recomendacao__motivo">
-                ${escaparHtml(recomendacao.motivo)}
-            </p>
+                <span class="validacao-dados">
+                    ${
+                        recomendacao.dadosValidados
+                            ? "Dados revisados"
+                            : "Dados provisórios"
+                    }
+                </span>
+            </div>
+
+            <div class="componentes-pontuacao">
+                ${componentesHtml}
+            </div>
+
+            <div class="motivos-recomendacao">
+                <strong>Por que esta escolha?</strong>
+
+                <ul>
+                    ${motivosHtml}
+                </ul>
+            </div>
         </article>
     `;
 }
 
+function renderizarAvisos(avisos) {
+    if (avisos.length === 0) {
+        painelAvisos.classList.add("oculto");
+        listaAvisos.innerHTML = "";
+        return;
+    }
+
+    listaAvisos.innerHTML = avisos
+        .map((aviso) => `<li>${escaparHtml(aviso)}</li>`)
+        .join("");
+
+    painelAvisos.classList.remove("oculto");
+}
+
+async function extrairMensagemErro(resposta) {
+    try {
+        const erro = await resposta.json();
+        const detalhes = Array.isArray(erro.detalhes)
+            ? erro.detalhes.join(" ")
+            : "";
+
+        return detalhes || erro.erro || "Não foi possível analisar o draft.";
+    } catch (erro) {
+        return "Não foi possível analisar o draft.";
+    }
+}
+
+function formatarPontuacaoComponente(nome, valor) {
+    if (nome === "base") {
+        return String(valor);
+    }
+
+    return valor > 0 ? `+${valor}` : String(valor);
+}
+
 function mostrarErro(mensagem) {
     mensagemErro.textContent = mensagem;
+}
+
+function limparErro() {
+    mensagemErro.textContent = "";
 }
 
 function obterIniciais(nome) {
@@ -457,6 +710,12 @@ function normalizarTexto(valor) {
         .replace(/\p{M}/gu, "")
         .trim()
         .toLowerCase();
+}
+
+function normalizarClasse(valor) {
+    return normalizarTexto(valor)
+        .replaceAll(" ", "-")
+        .replaceAll("_", "-");
 }
 
 function escaparHtml(valor) {
