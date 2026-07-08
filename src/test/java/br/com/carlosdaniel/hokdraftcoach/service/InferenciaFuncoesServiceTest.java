@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -82,6 +83,26 @@ class InferenciaFuncoesServiceTest {
     }
 
     @Test
+    void devePreservarAOrdemRealDoSlotComLacuna() {
+        InferenciaFuncoesRequest request = new InferenciaFuncoesRequest(
+            List.of(new PickSemFuncaoRequest(3, 20L)),
+            List.of()
+        );
+
+        InferenciaFuncoesResponse resposta = service.inferir(request);
+
+        assertEquals(
+            "B3",
+            resposta.equipeAzul()
+                .hipoteses()
+                .getFirst()
+                .atribuicoes()
+                .getFirst()
+                .slot()
+        );
+    }
+
+    @Test
     void deveRejeitarMesmoHeroiNosDoisLados() {
         InferenciaFuncoesRequest request = request(
             List.of(20L),
@@ -99,8 +120,20 @@ class InferenciaFuncoesServiceTest {
         List<Long> vermelho
     ) {
         return new InferenciaFuncoesRequest(
-            azul.stream().map(PickSemFuncaoRequest::new).toList(),
-            vermelho.stream().map(PickSemFuncaoRequest::new).toList()
+            criarPicks(azul),
+            criarPicks(vermelho)
         );
+    }
+
+    private List<PickSemFuncaoRequest> criarPicks(List<Long> ids) {
+        List<PickSemFuncaoRequest> picks = new ArrayList<>();
+
+        for (int indice = 0; indice < ids.size(); indice++) {
+            picks.add(
+                new PickSemFuncaoRequest(indice + 1, ids.get(indice))
+            );
+        }
+
+        return picks;
     }
 }
