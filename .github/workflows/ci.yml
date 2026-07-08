@@ -3,6 +3,7 @@ name: Java CI
 on:
   push:
     branches:
+      - main
       - feat/backend-draft-engine
   pull_request:
     branches:
@@ -56,5 +57,37 @@ jobs:
 
           tail -n 30 maven.log
 
-      - name: Validar imagem da Vercel
+      - name: Construir imagem da Vercel
         run: docker build --file Dockerfile.vercel --tag hok-draft-coach:ci .
+
+      - name: Iniciar contêiner e testar API
+        shell: bash
+        run: |
+          docker run --detach \
+            --name hok-draft-coach-ci \
+            --env PORT=8080 \
+            --publish 127.0.0.1:18080:8080 \
+            hok-draft-coach:ci
+
+          for tentativa in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:18080/api/status > resposta-status.json; then
+              cat resposta-status.json
+              docker logs hok-draft-coach-ci
+              docker rm --force hok-draft-coach-ci
+              exit 0
+            fi
+
+            if ! docker inspect --format='{{.State.Running}}' hok-draft-coach-ci | grep -q true; then
+              echo "O contêiner encerrou antes de responder."
+              docker logs hok-draft-coach-ci
+              docker rm --force hok-draft-coach-ci
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          echo "O contêiner não respondeu dentro do limite."
+          docker logs hok-draft-coach-ci
+          docker rm --force hok-draft-coach-ci
+          exit 1
