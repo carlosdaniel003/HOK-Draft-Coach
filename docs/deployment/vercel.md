@@ -5,6 +5,7 @@ O HOK Draft Coach é uma aplicação única: o Spring Boot serve a interface est
 ## Arquivos envolvidos
 
 - `Dockerfile.vercel`: compila o projeto com Maven e executa o JAR em Java 21.
+- `vercel.json`: registra explicitamente o serviço `app` e encaminha todas as URLs ao contêiner.
 - `.dockerignore`: reduz o contexto enviado ao build.
 - `src/main/resources/application.properties`: usa `PORT` em produção e `8080` localmente.
 
@@ -14,27 +15,45 @@ O HOK Draft Coach é uma aplicação única: o Spring Boot serve a interface est
 2. Selecione **Add New > Project**.
 3. Importe o repositório `carlosdaniel003/HOK-Draft-Coach`.
 4. Mantenha **Root Directory** como `./`.
-5. Não configure Build Command, Output Directory ou Install Command.
-6. Inicie o primeiro deploy.
-7. No projeto criado, abra **Settings > Environments**.
-8. Abra o ambiente **Production** e acesse **Branch Tracking**.
-9. Defina a branch de produção como `feat/backend-draft-engine`.
-10. Salve e crie um novo deployment dessa branch em **Deployments > Create Deployment**.
+5. Selecione **Framework Preset: Other**.
+6. Deixe vazios Build Command, Output Directory e Install Command.
+7. Inicie o deploy.
+8. Mantenha a branch de produção como `main`.
 
-A Vercel detecta `Dockerfile.vercel` na raiz, constrói a imagem e encaminha todo o tráfego para o Spring Boot.
+A Vercel usa `vercel.json` para criar o serviço a partir de `Dockerfile.vercel` e encaminha todo o tráfego ao Spring Boot.
+
+## Corrigir deployment com 404 da própria Vercel
+
+Se aparecer:
+
+```text
+404: NOT_FOUND
+Code: NOT_FOUND
+```
+
+confirme em **Settings > Build and Deployment**:
+
+- Root Directory: vazio ou `./`;
+- Framework Preset: `Other`;
+- Build Command: vazio;
+- Output Directory: vazio;
+- Install Command: vazio.
+
+Depois abra **Deployments**, selecione o deployment mais recente da `main` e use **Redeploy** sem reutilizar o Build Cache.
 
 ## Publicação por linha de comando
 
-Na raiz local do projeto e com a branch correta selecionada:
+Na raiz local do projeto:
 
 ```powershell
-git switch feat/backend-draft-engine
-git pull origin feat/backend-draft-engine
+git switch main
+git pull origin main
 npm install --global vercel
-vercel --prod
+vercel link
+vercel --prod --force
 ```
 
-O build da imagem ocorre na infraestrutura da Vercel; Docker local não é necessário para `vercel --prod`.
+O parâmetro `--force` cria um build novo sem reutilizar o deployment anterior.
 
 ## Validação após o deploy
 
@@ -73,7 +92,7 @@ Quando PostgreSQL for adicionado, a conexão deverá ser configurada por variáv
 
 ## Observações
 
-- Cada push na branch de produção gera um novo deployment de produção.
+- Cada push na branch `main` gera um novo deployment de produção.
 - Outras branches recebem deployments de Preview.
 - O contêiner pode reduzir a zero quando estiver sem tráfego; a primeira requisição posterior pode ter latência de inicialização.
 - Logs da aplicação ficam disponíveis na seção de observabilidade e logs do deployment.
