@@ -30,15 +30,15 @@
                 <h1>HOK Draft Coach</h1>
 
                 <p>
-                    Monte as duas equipes e receba recomendações
-                    para completar sua composição.
+                    Monte as duas equipes, deixe uma posição aliada vazia
+                    e receba recomendações explicadas para completar o draft.
                 </p>
             </div>
 
             <div class="cabecalho__acoes">
-                <span class="status-api">
+                <span id="status-api" class="status-api">
                     <span class="status-api__indicador"></span>
-                    API online
+                    <span id="status-api-texto">Verificando API</span>
                 </span>
 
                 <button
@@ -62,7 +62,8 @@
                         <h2>Composição das equipes</h2>
 
                         <p>
-                            Selecione os heróis já escolhidos durante o draft.
+                            Cada slot aceita somente heróis cadastrados
+                            para a respectiva rota.
                         </p>
                     </div>
                 </div>
@@ -129,23 +130,38 @@
                         <h2>Recomendação do coach</h2>
 
                         <p>
-                            O sistema utiliza os dados atuais do draft.
+                            Escolha a rota aliada que o motor deverá completar.
                         </p>
                     </div>
                 </div>
 
-                <button
-                    id="botao-analisar"
-                    class="botao-principal"
-                    type="button"
-                >
-                    Analisar draft
-                </button>
+                <div class="painel-analise__acoes">
+                    <label class="campo-rota-alvo" for="rota-alvo">
+                        <span>Rota a recomendar</span>
+
+                        <select id="rota-alvo">
+                            <option value="CLASH_LANE">Clash Lane</option>
+                            <option value="JUNGLE">Jungle</option>
+                            <option value="MID_LANE">Mid Lane</option>
+                            <option value="FARM_LANE" selected>Farm Lane</option>
+                            <option value="ROAMING">Roaming</option>
+                        </select>
+                    </label>
+
+                    <button
+                        id="botao-analisar"
+                        class="botao-principal"
+                        type="button"
+                    >
+                        Analisar draft
+                    </button>
+                </div>
             </div>
 
             <p
                 id="mensagem-erro"
                 class="mensagem-erro"
+                role="alert"
             ></p>
 
             <div
@@ -153,15 +169,15 @@
                 class="estado-inicial"
             >
                 <div class="estado-inicial__icone">
-                    IA
+                    M
                 </div>
 
                 <div>
-                    <h3>Draft aguardando análise</h3>
+                    <h3>Motor aguardando o draft</h3>
 
                     <p>
-                        Coloque um adversário na Farm Lane e clique
-                        em analisar para receber recomendações.
+                        Mantenha vazio o slot aliado da rota selecionada.
+                        As demais escolhas podem ser preenchidas parcialmente.
                     </p>
                 </div>
             </div>
@@ -174,7 +190,10 @@
 
                 <div>
                     <strong>Analisando composição</strong>
-                    <p>Comparando confrontos disponíveis...</p>
+                    <p>
+                        Calculando confronto, sinergia, composição
+                        e resposta aos inimigos.
+                    </p>
                 </div>
             </div>
 
@@ -185,23 +204,37 @@
                 <div class="resultado-analise__resumo">
                     <div>
                         <span class="resultado-analise__etiqueta">
-                            Alvo da análise
+                            Rota recomendada
                         </span>
 
-                        <strong id="heroi-analisado">
+                        <strong id="rota-analisada">
                             —
                         </strong>
                     </div>
 
-                    <span id="quantidade-resultados">
-                        0 recomendações
-                    </span>
+                    <div class="resultado-analise__metadados">
+                        <span id="versao-dados" class="versao-dados">
+                            —
+                        </span>
+
+                        <span id="quantidade-resultados">
+                            0 recomendações
+                        </span>
+                    </div>
                 </div>
 
                 <div
                     id="lista-recomendacoes"
                     class="lista-recomendacoes"
                 ></div>
+
+                <aside
+                    id="painel-avisos"
+                    class="painel-avisos oculto"
+                >
+                    <strong>Avisos da análise</strong>
+                    <ul id="lista-avisos"></ul>
+                </aside>
             </div>
         </section>
     </main>
@@ -260,11 +293,21 @@
                 id="lista-herois-modal"
                 class="grade-herois"
             ></div>
+
+            <div class="modal__rodape">
+                <button
+                    id="botao-remover-heroi"
+                    class="botao-perigo oculto"
+                    type="button"
+                >
+                    Remover herói deste slot
+                </button>
+            </div>
         </section>
     </div>
 
     <footer class="rodape">
-        Java 21 · Spring Boot · Sistema em desenvolvimento
+        Java 21 · Spring Boot · Motor de draft em desenvolvimento
     </footer>
 </body>
 </html>
