@@ -39,22 +39,31 @@ class IntegracaoDnaMotorDraftTest {
         );
         DnaHeroiService dnaHeroi = new DnaHeroiService();
         EconomiaRecursosService economia = new EconomiaRecursosService();
-        AnaliseTemporalSinergiaService dnaService =
-            new AnaliseTemporalSinergiaService(
+        PerfilTemporalService temporal = new PerfilTemporalService();
+        SinergiaGrupoService sinergias = new SinergiaGrupoService(
+            new SinergiaGrupoRepository(),
+            dnaHeroi
+        );
+        AntiSinergiaService antiSinergias = new AntiSinergiaService(
+            new AntiSinergiaRepository(),
+            dnaHeroi
+        );
+        AnaliseAmeacaService ameacas = new AnaliseAmeacaService(
+            dnaHeroi,
+            temporal,
+            economia
+        );
+        AnaliseAmeacaComposicaoService dnaService =
+            new AnaliseAmeacaComposicaoService(
                 heroiService,
                 dnaHeroi,
                 new CondicaoVitoriaService(dnaHeroi, economia),
                 economia,
                 new NecessidadePenalidadeService(dnaHeroi, economia),
-                new PerfilTemporalService(),
-                new SinergiaGrupoService(
-                    new SinergiaGrupoRepository(),
-                    dnaHeroi
-                ),
-                new AntiSinergiaService(
-                    new AntiSinergiaRepository(),
-                    dnaHeroi
-                )
+                temporal,
+                sinergias,
+                antiSinergias,
+                ameacas
             );
         DraftService draftService = new DraftService(heroiService);
         draftDnaService = new DraftDnaService(
@@ -71,7 +80,8 @@ class IntegracaoDnaMotorDraftTest {
         proximoPickDnaService = new RecomendacaoProximoPickDnaService(
             base,
             heroiService,
-            dnaService
+            dnaService,
+            new SegurancaBlindPickService()
         );
     }
 
@@ -95,12 +105,16 @@ class IntegracaoDnaMotorDraftTest {
         assertNotNull(
             resposta.diagnosticoComposicao().curvaPoderNossaComposicao()
         );
+        assertNotNull(
+            resposta.diagnosticoComposicao().analiseAmeacasInimigas()
+        );
         assertTrue(resposta.recomendacoes().stream().allMatch(
             recomendacao ->
                 recomendacao.componentes().containsKey("dnaComposicao")
                     && recomendacao.componentes().containsKey("curvaTemporal")
                     && recomendacao.componentes().containsKey("sinergiaGrupo")
                     && recomendacao.componentes().containsKey("antiSinergia")
+                    && recomendacao.componentes().containsKey("respostaAmeaca")
         ));
     }
 
@@ -124,7 +138,9 @@ class IntegracaoDnaMotorDraftTest {
             proximoPickDnaService.recomendar(request);
 
         assertNotNull(resposta.diagnosticoComposicao());
+        assertNotNull(resposta.contextoDraft());
         assertNotNull(resposta.recomendacaoPrincipal());
+        assertNotNull(resposta.recomendacaoPrincipal().perfilBlindPick());
         assertTrue(
             resposta.recomendacaoPrincipal()
                 .componentes()
@@ -133,10 +149,10 @@ class IntegracaoDnaMotorDraftTest {
         assertTrue(
             resposta.recomendacaoPrincipal()
                 .componentes()
-                .containsKey("curvaTemporal")
+                .containsKey("ajusteOrdemDraft")
         );
         assertTrue(resposta.avisos().stream().anyMatch(
-            aviso -> aviso.contains("curva de poder")
+            aviso -> aviso.contains("ordem do draft")
         ));
     }
 }
