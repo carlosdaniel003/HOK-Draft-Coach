@@ -16,10 +16,12 @@ import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import br.com.carlosdaniel.hokdraftcoach.repository.AntiSinergiaRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoClashRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoJungleRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoMidRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoSuporteRepository;
+import br.com.carlosdaniel.hokdraftcoach.repository.SinergiaGrupoRepository;
 
 class IntegracaoDnaMotorDraftTest {
 
@@ -35,10 +37,25 @@ class IntegracaoDnaMotorDraftTest {
             new CatalogoJungleRepository(),
             new CatalogoClashRepository()
         );
-        DnaComposicaoService dnaService = new DnaComposicaoService(
-            heroiService,
-            new DnaHeroiService()
-        );
+        DnaHeroiService dnaHeroi = new DnaHeroiService();
+        EconomiaRecursosService economia = new EconomiaRecursosService();
+        AnaliseTemporalSinergiaService dnaService =
+            new AnaliseTemporalSinergiaService(
+                heroiService,
+                dnaHeroi,
+                new CondicaoVitoriaService(dnaHeroi, economia),
+                economia,
+                new NecessidadePenalidadeService(dnaHeroi, economia),
+                new PerfilTemporalService(),
+                new SinergiaGrupoService(
+                    new SinergiaGrupoRepository(),
+                    dnaHeroi
+                ),
+                new AntiSinergiaService(
+                    new AntiSinergiaRepository(),
+                    dnaHeroi
+                )
+            );
         DraftService draftService = new DraftService(heroiService);
         draftDnaService = new DraftDnaService(
             draftService,
@@ -75,9 +92,15 @@ class IntegracaoDnaMotorDraftTest {
 
         assertNotNull(resposta.diagnosticoComposicao());
         assertTrue(resposta.diagnosticoComposicao().diagnosticoConcluido());
+        assertNotNull(
+            resposta.diagnosticoComposicao().curvaPoderNossaComposicao()
+        );
         assertTrue(resposta.recomendacoes().stream().allMatch(
             recomendacao ->
                 recomendacao.componentes().containsKey("dnaComposicao")
+                    && recomendacao.componentes().containsKey("curvaTemporal")
+                    && recomendacao.componentes().containsKey("sinergiaGrupo")
+                    && recomendacao.componentes().containsKey("antiSinergia")
         ));
     }
 
@@ -107,8 +130,13 @@ class IntegracaoDnaMotorDraftTest {
                 .componentes()
                 .containsKey("dnaComposicao")
         );
+        assertTrue(
+            resposta.recomendacaoPrincipal()
+                .componentes()
+                .containsKey("curvaTemporal")
+        );
         assertTrue(resposta.avisos().stream().anyMatch(
-            aviso -> aviso.contains("DNA aliado e inimigo")
+            aviso -> aviso.contains("curva de poder")
         ));
     }
 }
