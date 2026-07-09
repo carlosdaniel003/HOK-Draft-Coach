@@ -27,12 +27,12 @@ public class RecomendacaoProximoPickDnaService {
 
     private final RecomendacaoProximoPickService recomendacaoBase;
     private final HeroiService heroiService;
-    private final DnaComposicaoService dnaComposicaoService;
+    private final AnaliseTemporalSinergiaService dnaComposicaoService;
 
     public RecomendacaoProximoPickDnaService(
         RecomendacaoProximoPickService recomendacaoBase,
         HeroiService heroiService,
-        DnaComposicaoService dnaComposicaoService
+        AnaliseTemporalSinergiaService dnaComposicaoService
     ) {
         this.recomendacaoBase = recomendacaoBase;
         this.heroiService = heroiService;
@@ -85,17 +85,17 @@ public class RecomendacaoProximoPickDnaService {
             .toList();
         String mensagem = switch (base.estadoDraft()) {
             case "MINHA_VEZ" ->
-                "É sua vez. Após o diagnóstico da composição, a melhor escolha é "
+                "É sua vez. Após o diagnóstico temporal e estratégico, a melhor escolha é "
                     + principal.heroi() + ".";
             case "PLANEJAMENTO" ->
-                "Planejamento após o diagnóstico da composição: "
+                "Planejamento após o diagnóstico temporal e estratégico: "
                     + principal.heroi()
                     + ". A recomendação pode mudar após os próximos picks.";
             default -> base.mensagem();
         };
         List<String> avisos = new ArrayList<>(base.avisos());
         avisos.add(
-            "O DNA aliado e inimigo foi diagnosticado antes da ordenação final."
+            "DNA, curva de poder, sinergias de grupo e anti-sinergias foram avaliados antes da ordenação final."
         );
 
         return new RecomendacaoProximoPickResponse(
@@ -169,6 +169,9 @@ public class RecomendacaoProximoPickDnaService {
             base.componentes()
         );
         componentes.put("dnaComposicao", componenteDna);
+        componentes.put("curvaTemporal", dna.ajusteTemporal());
+        componentes.put("sinergiaGrupo", dna.bonusSinergiaGrupo());
+        componentes.put("antiSinergia", -dna.penalidadeAntiSinergia());
 
         List<String> motivos = new ArrayList<>(base.motivos());
         if (!dna.corrige().isEmpty()) {
@@ -177,12 +180,13 @@ public class RecomendacaoProximoPickDnaService {
         if (!dna.explora().isEmpty()) {
             motivos.add("Explora o DNA inimigo: " + dna.explora() + ".");
         }
-        motivos.addAll(dna.motivos().stream().limit(2).toList());
+        motivos.addAll(dna.motivos().stream().limit(4).toList());
 
         List<String> riscos = new ArrayList<>(base.riscos());
         if (dna.pontuacao() < 45) {
             riscos.add("Encaixe fraco com as prioridades atuais do DNA.");
         }
+        riscos.addAll(dna.alertas().stream().limit(3).toList());
 
         int pontuacaoFinal = limitar(
             base.pontuacaoFinal() + componenteDna,
@@ -204,8 +208,8 @@ public class RecomendacaoProximoPickDnaService {
             base.seguranca(),
             base.dificuldade(),
             Map.copyOf(componentes),
-            motivos.stream().distinct().limit(8).toList(),
-            riscos.stream().distinct().limit(5).toList(),
+            motivos.stream().distinct().limit(10).toList(),
+            riscos.stream().distinct().limit(7).toList(),
             base.dadosValidados()
         );
     }
