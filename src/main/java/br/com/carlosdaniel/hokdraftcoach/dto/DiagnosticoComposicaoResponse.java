@@ -22,6 +22,7 @@ public record DiagnosticoComposicaoResponse(
     List<SinergiaGrupoResponse> sinergiasGrupoComposicaoInimiga,
     List<AntiSinergiaResponse> antiSinergiasNossaComposicao,
     List<AntiSinergiaResponse> antiSinergiasComposicaoInimiga,
+    AnaliseAmeacasResponse analiseAmeacasInimigas,
     boolean diagnosticoConcluido
 ) {
 
@@ -57,6 +58,52 @@ public record DiagnosticoComposicaoResponse(
         antiSinergiasComposicaoInimiga = List.copyOf(
             antiSinergiasComposicaoInimiga
         );
+        analiseAmeacasInimigas = analiseAmeacasInimigas == null
+            ? AnaliseAmeacasResponse.vazia()
+            : analiseAmeacasInimigas;
+    }
+
+    public DiagnosticoComposicaoResponse(
+        DnaComposicao nossaComposicao,
+        DnaComposicao composicaoInimiga,
+        List<DiagnosticoEstrategico> diagnosticos,
+        List<PrioridadeDraftResponse> prioridades,
+        List<CondicaoVitoriaResponse> nossasCondicoesVitoria,
+        List<CondicaoVitoriaResponse> condicoesVitoriaInimigas,
+        List<NecessidadeComposicaoResponse> necessidades,
+        List<PenalidadeComposicaoResponse> penalidades,
+        EconomiaComposicaoResponse economiaNossaComposicao,
+        EconomiaComposicaoResponse economiaComposicaoInimiga,
+        CurvaPoderComposicaoResponse curvaPoderNossaComposicao,
+        CurvaPoderComposicaoResponse curvaPoderComposicaoInimiga,
+        List<DiagnosticoTemporalResponse> diagnosticosTemporais,
+        List<SinergiaGrupoResponse> sinergiasGrupoNossaComposicao,
+        List<SinergiaGrupoResponse> sinergiasGrupoComposicaoInimiga,
+        List<AntiSinergiaResponse> antiSinergiasNossaComposicao,
+        List<AntiSinergiaResponse> antiSinergiasComposicaoInimiga,
+        boolean diagnosticoConcluido
+    ) {
+        this(
+            nossaComposicao,
+            composicaoInimiga,
+            diagnosticos,
+            prioridades,
+            nossasCondicoesVitoria,
+            condicoesVitoriaInimigas,
+            necessidades,
+            penalidades,
+            economiaNossaComposicao,
+            economiaComposicaoInimiga,
+            curvaPoderNossaComposicao,
+            curvaPoderComposicaoInimiga,
+            diagnosticosTemporais,
+            sinergiasGrupoNossaComposicao,
+            sinergiasGrupoComposicaoInimiga,
+            antiSinergiasNossaComposicao,
+            antiSinergiasComposicaoInimiga,
+            AnaliseAmeacasResponse.vazia(),
+            diagnosticoConcluido
+        );
     }
 
     public DiagnosticoComposicaoResponse(
@@ -90,6 +137,7 @@ public record DiagnosticoComposicaoResponse(
             List.of(),
             List.of(),
             List.of(),
+            AnaliseAmeacasResponse.vazia(),
             diagnosticoConcluido
         );
     }
@@ -119,6 +167,7 @@ public record DiagnosticoComposicaoResponse(
             List.of(),
             List.of(),
             List.of(),
+            AnaliseAmeacasResponse.vazia(),
             diagnosticoConcluido
         );
     }
