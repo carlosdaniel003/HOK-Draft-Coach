@@ -2,17 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-    <meta
-        name="description"
-        content="Simulador e coach de draft para Honor of Kings"
-    >
-
-    <title>HOK Draft Coach</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Assistente estratégico de draft para Honor of Kings">
+    <meta name="theme-color" content="#07101f">
+    <title>HOK Draft Assist</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/game-draft.css">
     <link rel="stylesheet" href="/css/role-inference.css">
@@ -20,321 +13,204 @@
     <script src="/js/app.js" defer></script>
     <script src="/js/next-pick.js" defer></script>
 </head>
-
 <body>
-    <header class="cabecalho cabecalho--draft">
-        <div class="cabecalho__conteudo">
-            <div>
-                <span class="cabecalho__etiqueta">
-                    Pick & Ban Intelligence
-                </span>
+    <header class="draft-topbar">
+        <div class="draft-brand">
+            <span class="draft-brand__mark">H</span>
+            <span>
+                <strong>DRAFT ASSIST</strong>
+                <small>HONOR OF KINGS</small>
+            </span>
+        </div>
 
-                <h1>HOK Draft Coach</h1>
-
-                <p>
-                    Registre o draft na mesma ordem da partida.
-                    As funções são inferidas depois dos picks, incluindo heróis flex.
-                </p>
-            </div>
-
-            <div class="cabecalho__painel">
-                <span id="status-api" class="status-api">
-                    <span class="status-api__indicador"></span>
-                    <span id="status-api-texto">Verificando API</span>
-                </span>
-
-                <label class="controle-draft" for="meu-lado">
-                    <span>Meu lado</span>
+        <div class="draft-context">
+            <label class="context-control context-control--blue" for="meu-lado">
+                <span class="context-control__icon">◆</span>
+                <span class="context-control__text">
+                    <small>MEU LADO</small>
                     <select id="meu-lado">
-                        <option value="INDEFINIDO">Ainda não sei</option>
-                        <option value="AZUL">Lado azul</option>
-                        <option value="VERMELHO">Lado vermelho</option>
+                        <option value="INDEFINIDO">Selecionar</option>
+                        <option value="AZUL">Equipe Azul</option>
+                        <option value="VERMELHO">Equipe Vermelha</option>
                     </select>
-                </label>
+                </span>
+            </label>
 
-                <label class="controle-draft" for="minha-ordem">
-                    <span>Minha ordem</span>
+            <label class="context-control context-control--violet" for="minha-ordem">
+                <span class="context-control__icon">●</span>
+                <span class="context-control__text">
+                    <small>MINHA POSIÇÃO</small>
                     <select id="minha-ordem">
-                        <option value="">Ainda não sei</option>
-                        <option value="1">Jogador 1</option>
-                        <option value="2">Jogador 2</option>
-                        <option value="3">Jogador 3</option>
-                        <option value="4">Jogador 4</option>
-                        <option value="5">Jogador 5</option>
+                        <option value="">Selecionar</option>
+                        <option value="1">1º pick</option>
+                        <option value="2">2º pick</option>
+                        <option value="3">3º pick</option>
+                        <option value="4">4º pick</option>
+                        <option value="5">5º pick</option>
                     </select>
-                </label>
+                </span>
+            </label>
 
-                <button
-                    id="botao-limpar"
-                    class="botao-secundario"
-                    type="button"
-                >
-                    Reiniciar draft
-                </button>
-            </div>
+            <label class="context-control context-control--green" for="preferencia-funcao">
+                <span class="context-control__icon">✦</span>
+                <span class="context-control__text">
+                    <small>MINHA FUNÇÃO</small>
+                    <select id="preferencia-funcao">
+                        <option value="">Qualquer função</option>
+                        <option value="CLASH_LANE">Clash Lane</option>
+                        <option value="JUNGLE">Jungle</option>
+                        <option value="MID_LANE">Mid Lane</option>
+                        <option value="FARM_LANE">Farm Lane</option>
+                        <option value="ROAMING">Roaming</option>
+                    </select>
+                </span>
+            </label>
+        </div>
+
+        <div class="draft-topbar__actions">
+            <span id="status-api" class="status-api">
+                <span class="status-api__indicador"></span>
+                <span id="status-api-texto">Verificando API</span>
+            </span>
+            <button id="botao-limpar" class="draft-button" type="button">↻ Reiniciar draft</button>
         </div>
     </header>
 
-    <main class="conteudo conteudo--draft-game">
-        <section class="estado-draft">
-            <div>
-                <span id="fase-draft" class="fase-draft">
-                    Fase de bans
-                </span>
-
-                <h2 id="proxima-acao">
-                    Registre os três bans de cada equipe
-                </h2>
-
-                <p id="descricao-acao">
-                    Os picks serão liberados visualmente quando os seis bans estiverem preenchidos.
-                </p>
-            </div>
-
-            <div class="progresso-draft">
-                <div class="progresso-draft__numeros">
-                    <strong id="progresso-atual">0</strong>
-                    <span>/ 16 ações</span>
+    <main class="draft-app">
+        <section class="draft-main-column">
+            <section class="draft-phase-panel">
+                <div class="draft-phase-panel__label">
+                    <span class="draft-phase-panel__icon">⚔</span>
+                    <span>
+                        <small>FASE ATUAL</small>
+                        <strong id="fase-draft">Fase de bans</strong>
+                    </span>
                 </div>
 
-                <div class="progresso-draft__trilha">
-                    <span id="progresso-barra"></span>
+                <div class="draft-phase-panel__action">
+                    <small>PRÓXIMA AÇÃO</small>
+                    <strong id="proxima-acao">Registre os três bans de cada equipe</strong>
+                    <p id="descricao-acao">Os picks serão liberados depois dos seis bans.</p>
                 </div>
-            </div>
-        </section>
 
-        <section class="painel-fase">
-            <div class="painel-fase__cabecalho">
-                <div>
-                    <span class="numero-etapa">01</span>
+                <div class="draft-phase-panel__progress">
                     <div>
-                        <h2>Fase de bans</h2>
-                        <p>Três heróis removidos por cada lado antes dos picks.</p>
+                        <small>PROGRESSO</small>
+                        <strong><span id="progresso-atual">0</span>/16</strong>
                     </div>
+                    <div class="progresso-draft__trilha"><span id="progresso-barra"></span></div>
                 </div>
+            </section>
 
-                <span id="contador-bans" class="contador-draft">
-                    0 de 6 bans
-                </span>
-            </div>
-
-            <div class="ban-board">
-                <section class="lado-draft lado-draft--azul">
-                    <header class="lado-draft__cabecalho">
-                        <span class="lado-draft__cor"></span>
+            <section class="draft-board">
+                <section class="draft-team draft-team--blue">
+                    <header class="draft-team__header">
                         <div>
-                            <small>Blue Side</small>
-                            <h3>Lado azul</h3>
+                            <small>BLUE SIDE</small>
+                            <h2>EQUIPE AZUL</h2>
                         </div>
+                        <span id="contador-picks-azul" class="team-side-badge">FIRST PICK</span>
                     </header>
 
-                    <div id="bans-azul" class="bans-equipe"></div>
-                </section>
-
-                <div class="fase-divisor">
-                    <span>3</span>
-                    <small>bans</small>
-                    <span>×</span>
-                    <span>3</span>
-                </div>
-
-                <section class="lado-draft lado-draft--vermelho">
-                    <header class="lado-draft__cabecalho lado-draft__cabecalho--direita">
-                        <div>
-                            <small>Red Side</small>
-                            <h3>Lado vermelho</h3>
-                        </div>
-                        <span class="lado-draft__cor"></span>
-                    </header>
-
-                    <div id="bans-vermelho" class="bans-equipe"></div>
-                </section>
-            </div>
-        </section>
-
-        <section class="painel-fase">
-            <div class="painel-fase__cabecalho">
-                <div>
-                    <span class="numero-etapa">02</span>
-                    <div>
-                        <h2>Fase de picks</h2>
-                        <p>
-                            O lado azul abre. A sequência é 1–2–2–2–2–1.
-                        </p>
+                    <div class="draft-team__bans">
+                        <span class="draft-section-label">BANS</span>
+                        <div id="bans-azul" class="bans-equipe"></div>
                     </div>
-                </div>
-
-                <span id="contador-picks" class="contador-draft">
-                    0 de 10 picks
-                </span>
-            </div>
-
-            <div class="pick-board">
-                <section class="time-picks time-picks--azul">
-                    <header class="time-picks__cabecalho">
-                        <div>
-                            <span class="time-picks__etiqueta">Blue Side</span>
-                            <h3>Lado azul</h3>
-                        </div>
-                        <span class="time-picks__primeiro">First Pick</span>
-                    </header>
 
                     <div id="picks-azul" class="picks-equipe"></div>
                 </section>
 
-                <section class="ordem-picks">
-                    <span class="ordem-picks__titulo">Ordem do draft</span>
+                <section class="draft-center-track">
+                    <div class="draft-center-track__summary">
+                        <span id="contador-bans">0 de 6 bans</span>
+                        <strong>ORDEM DO DRAFT</strong>
+                        <span id="contador-picks">0 de 10 picks</span>
+                    </div>
                     <div id="sequencia-picks" class="sequencia-picks"></div>
                 </section>
 
-                <section class="time-picks time-picks--vermelho">
-                    <header class="time-picks__cabecalho time-picks__cabecalho--direita">
+                <section class="draft-team draft-team--red">
+                    <header class="draft-team__header draft-team__header--right">
+                        <span class="team-side-badge team-side-badge--red">LAST PICK</span>
                         <div>
-                            <span class="time-picks__etiqueta">Red Side</span>
-                            <h3>Lado vermelho</h3>
+                            <small>RED SIDE</small>
+                            <h2>EQUIPE VERMELHA</h2>
                         </div>
-                        <span class="time-picks__ultimo">Last Pick</span>
                     </header>
+
+                    <div class="draft-team__bans draft-team__bans--right">
+                        <div id="bans-vermelho" class="bans-equipe"></div>
+                        <span class="draft-section-label">BANS</span>
+                    </div>
 
                     <div id="picks-vermelho" class="picks-equipe"></div>
                 </section>
-            </div>
+            </section>
+
+            <details class="technical-drawer">
+                <summary>
+                    <span>ANÁLISE TÉCNICA E INFERÊNCIA DE FUNÇÕES</span>
+                    <small>Expandir detalhes do motor</small>
+                </summary>
+                <div class="technical-drawer__content">
+                    <article class="technical-card">
+                        <span>Próxima movimentação</span>
+                        <strong id="resumo-proxima-acao">Fase de bans</strong>
+                        <p id="resumo-proxima-descricao">Preencha os bans disponíveis dos dois lados.</p>
+                    </article>
+                    <article class="technical-card">
+                        <span>Minha posição no draft</span>
+                        <strong id="resumo-minha-posicao">Não definida</strong>
+                        <p>O motor adapta segurança, flexibilidade e impacto conforme o seu slot.</p>
+                    </article>
+                    <article class="technical-card technical-card--wide">
+                        <span>Heróis flex identificados</span>
+                        <div id="lista-flex" class="lista-flex"><p>Nenhum herói flex selecionado.</p></div>
+                    </article>
+                    <article class="technical-card technical-card--wide">
+                        <span>Hipóteses de função</span>
+                        <div id="hipoteses-funcao" class="hipoteses-funcao">
+                            <p>As possibilidades aparecerão conforme os heróis forem escolhidos.</p>
+                        </div>
+                    </article>
+                </div>
+            </details>
         </section>
 
-        <section id="painel-proximo-pick" class="painel-proximo-pick">
-            <div class="painel-proximo-pick__cabecalho">
-                <div>
-                    <span class="numero-etapa">03</span>
-                    <div>
-                        <h2>O que devo pegar?</h2>
-                        <p>
-                            Resposta principal calculada sobre todas as funções ainda possíveis.
-                        </p>
-                    </div>
-                </div>
+        <aside id="painel-proximo-pick" class="strategy-assistant">
+            <header class="strategy-assistant__header">
+                <nav class="strategy-tabs" aria-label="Áreas da análise">
+                    <button class="strategy-tab strategy-tab--active" data-analysis-tab="now" type="button"><span>ϟ</span> AGORA</button>
+                    <button class="strategy-tab" data-analysis-tab="composition" type="button"><span>♟</span> COMPOSIÇÃO</button>
+                    <button class="strategy-tab" data-analysis-tab="enemies" type="button"><span>◎</span> INIMIGOS</button>
+                    <button class="strategy-tab" data-analysis-tab="projection" type="button"><span>↗</span> PROJEÇÃO</button>
+                </nav>
+                <span id="status-proximo-pick" class="coach-status coach-status--carregando">Calculando</span>
+            </header>
 
-                <div class="painel-proximo-pick__controles">
-                    <label class="preferencia-funcao" for="preferencia-funcao">
-                        <span>Função preferida</span>
-                        <select id="preferencia-funcao">
-                            <option value="">Qualquer função</option>
-                            <option value="CLASH_LANE">Clash Lane</option>
-                            <option value="JUNGLE">Jungle</option>
-                            <option value="MID_LANE">Mid Lane</option>
-                            <option value="FARM_LANE">Farm Lane</option>
-                            <option value="ROAMING">Roaming</option>
-                        </select>
-                    </label>
-
-                    <span id="status-proximo-pick" class="coach-status coach-status--carregando">
-                        Calculando
-                    </span>
-                </div>
-            </div>
-
-            <div id="conteudo-proximo-pick" class="conteudo-proximo-pick">
+            <div id="conteudo-proximo-pick" class="strategy-assistant__body">
                 <div class="coach-carregando">
                     <span class="coach-carregando__circulo"></span>
                     Preparando o motor de recomendação...
                 </div>
             </div>
-        </section>
-
-        <section class="leitura-draft">
-            <div class="leitura-draft__cabecalho">
-                <div>
-                    <span class="numero-etapa">04</span>
-                    <div>
-                        <h2>Leitura do coach</h2>
-                        <p>
-                            O sistema registra picks sem travar função e destaca possibilidades flexíveis.
-                        </p>
-                    </div>
-                </div>
-
-                <span class="leitura-draft__status">
-                    Motor de inferência ativo
-                </span>
-            </div>
-
-            <div class="leitura-cards">
-                <article class="leitura-card">
-                    <span>Próxima movimentação</span>
-                    <strong id="resumo-proxima-acao">Fase de bans</strong>
-                    <p id="resumo-proxima-descricao">
-                        Preencha os bans disponíveis dos dois lados.
-                    </p>
-                </article>
-
-                <article class="leitura-card">
-                    <span>Minha posição no draft</span>
-                    <strong id="resumo-minha-posicao">Não definida</strong>
-                    <p>
-                        Escolha seu lado e a ordem depois que a partida informar.
-                    </p>
-                </article>
-
-                <article class="leitura-card leitura-card--largo">
-                    <span>Heróis flex identificados</span>
-                    <div id="lista-flex" class="lista-flex">
-                        <p>Nenhum herói flex selecionado.</p>
-                    </div>
-                </article>
-
-                <article class="leitura-card leitura-card--largo">
-                    <span>Hipóteses de função</span>
-                    <div id="hipoteses-funcao" class="hipoteses-funcao">
-                        <p>
-                            As possibilidades aparecerão conforme os heróis forem escolhidos.
-                        </p>
-                    </div>
-                </article>
-            </div>
-        </section>
+        </aside>
     </main>
 
-    <div
-        id="modal-herois"
-        class="modal oculto"
-        aria-hidden="true"
-    >
+    <div id="modal-herois" class="modal oculto" aria-hidden="true">
         <div id="modal-overlay" class="modal__overlay"></div>
-
-        <section
-            class="modal__conteudo modal__conteudo--draft"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-titulo"
-        >
+        <section class="modal__conteudo modal__conteudo--draft" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
             <div class="modal__cabecalho">
                 <div>
-                    <span id="modal-etiqueta" class="modal__etiqueta">
-                        Seleção de herói
-                    </span>
+                    <span id="modal-etiqueta" class="modal__etiqueta">Seleção de herói</span>
                     <h2 id="modal-titulo">Escolha um herói</h2>
-                    <p id="modal-descricao">
-                        Heróis banidos ou já escolhidos ficam indisponíveis.
-                    </p>
+                    <p id="modal-descricao">Heróis banidos ou já escolhidos ficam indisponíveis.</p>
                 </div>
-
-                <button
-                    id="botao-fechar-modal"
-                    class="botao-fechar"
-                    type="button"
-                    aria-label="Fechar seleção"
-                >
-                    ×
-                </button>
+                <button id="botao-fechar-modal" class="botao-fechar" type="button" aria-label="Fechar seleção">×</button>
             </div>
 
             <div class="campo-pesquisa campo-pesquisa--draft">
-                <input
-                    id="pesquisa-heroi"
-                    type="search"
-                    placeholder="Pesquisar herói..."
-                    autocomplete="off"
-                >
-
+                <input id="pesquisa-heroi" type="search" placeholder="Pesquisar herói..." autocomplete="off">
                 <select id="filtro-rota" aria-label="Filtrar por função possível">
                     <option value="">Todas as funções</option>
                     <option value="CLASH_LANE">Clash Lane</option>
@@ -348,19 +224,24 @@
             <div id="lista-herois-modal" class="grade-herois"></div>
 
             <div class="modal__rodape">
-                <button
-                    id="botao-remover-heroi"
-                    class="botao-perigo oculto"
-                    type="button"
-                >
-                    Limpar este slot
-                </button>
+                <button id="botao-remover-heroi" class="botao-perigo oculto" type="button">Limpar este slot</button>
+                <span>Escolha rápida: pesquise, filtre e selecione o herói.</span>
             </div>
         </section>
     </div>
 
-    <footer class="rodape">
-        Java 21 · Spring Boot · Draft 5v5 com picks flexíveis
-    </footer>
+    <div id="modal-detalhes-pick" class="modal oculto" aria-hidden="true">
+        <div id="modal-detalhes-overlay" class="modal__overlay"></div>
+        <section class="modal__conteudo modal__conteudo--detalhes" role="dialog" aria-modal="true" aria-labelledby="detalhes-pick-titulo">
+            <div class="modal__cabecalho">
+                <div>
+                    <span class="modal__etiqueta">Análise da recomendação</span>
+                    <h2 id="detalhes-pick-titulo">Detalhes estratégicos</h2>
+                </div>
+                <button id="botao-fechar-detalhes" class="botao-fechar" type="button" aria-label="Fechar detalhes">×</button>
+            </div>
+            <div id="conteudo-detalhes-pick" class="pick-details-content"></div>
+        </section>
+    </div>
 </body>
 </html>
