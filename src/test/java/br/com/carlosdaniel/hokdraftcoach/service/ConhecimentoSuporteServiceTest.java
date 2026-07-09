@@ -16,6 +16,7 @@ import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 import br.com.carlosdaniel.hokdraftcoach.model.SinergiaBotLane;
 import br.com.carlosdaniel.hokdraftcoach.model.TipoComposicao;
+import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoMidRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoSuporteRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.PerfilSuporteRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.SinergiaBotLaneRepository;
@@ -28,10 +29,11 @@ class ConhecimentoSuporteServiceTest {
     @BeforeEach
     void configurar() {
         CatalogoSuporteRepository catalogo = new CatalogoSuporteRepository();
+        CatalogoMidRepository catalogoMid = new CatalogoMidRepository();
         PerfilSuporteRepository perfis = new PerfilSuporteRepository();
         SinergiaBotLaneRepository sinergias = new SinergiaBotLaneRepository();
 
-        heroiService = new HeroiServiceCompleto(catalogo);
+        heroiService = new HeroiServiceCompleto(catalogo, catalogoMid);
         conhecimentoSuporteService = new ConhecimentoSuporteService(
             heroiService,
             catalogo,
