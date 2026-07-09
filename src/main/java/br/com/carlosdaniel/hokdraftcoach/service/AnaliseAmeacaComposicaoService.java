@@ -3,19 +3,26 @@ package br.com.carlosdaniel.hokdraftcoach.service;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
 import br.com.carlosdaniel.hokdraftcoach.dto.AjusteRespostaAmeacaResponse;
+import br.com.carlosdaniel.hokdraftcoach.dto.AlvoPrioritarioAmeacaResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.AnaliseAmeacasResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.DiagnosticoComposicaoResponse;
+import br.com.carlosdaniel.hokdraftcoach.dto.PerfilAmeacaHeroiResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoDnaResponse;
+import br.com.carlosdaniel.hokdraftcoach.dto.SinergiaGrupoResponse;
 import br.com.carlosdaniel.hokdraftcoach.exception.RegraNegocioException;
+import br.com.carlosdaniel.hokdraftcoach.model.DimensaoEstrategica;
 import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
+import br.com.carlosdaniel.hokdraftcoach.model.PapelAmeaca;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 
 @Service
@@ -66,6 +73,10 @@ public class AnaliseAmeacaComposicaoService
             base.condicoesVitoriaInimigas(),
             base.sinergiasGrupoComposicaoInimiga(),
             base.antiSinergiasComposicaoInimiga()
+        );
+        ameacas = refinarDependencias(
+            ameacas,
+            base.sinergiasGrupoComposicaoInimiga()
         );
 
         return new DiagnosticoComposicaoResponse(
@@ -131,13 +142,356 @@ public class AnaliseAmeacaComposicaoService
             inimigos,
             List.of()
         );
-        return analiseAmeacaService.analisar(
+        AnaliseAmeacasResponse ameacas = analiseAmeacaService.analisar(
             equipe,
             base.nossaComposicao(),
             base.nossasCondicoesVitoria(),
             base.sinergiasGrupoNossaComposicao(),
             base.antiSinergiasNossaComposicao()
         );
+        return refinarDependencias(
+            ameacas,
+            base.sinergiasGrupoNossaComposicao()
+        );
+    }
+
+    private AnaliseAmeacasResponse refinarDependencias(
+        AnaliseAmeacasResponse original,
+        List<SinergiaGrupoResponse> sinergias
+    ) {
+        if (
+            original == null
+                || original.maiorAmeaca() == null
+                || original.perfis().isEmpty()
+        ) {
+            return original == null
+                ? AnaliseAmeacasResponse.vazia()
+                : original;
+        }
+
+        PerfilAmeacaHeroiResponse ameaca = original.maiorAmeaca();
+        PerfilAmeacaHeroiResponse iniciador = original.iniciadorPrincipal();
+        PerfilAmeacaHeroiResponse habilitador = original.habilitadorCritico();
+
+        if (
+            iniciador != null
+                && habilitador != null
+                && mesmoHeroi(iniciador.heroi(), habilitador.heroi())
+                && original.perfis().size() > 2
+        ) {
+            PerfilAmeacaHeroiResponse alternativo = original.perfis().stream()
+                .filter(perfil -> !mesmoHeroi(
+                    perfil.heroi(),
+                    ameaca.heroi()
+                ))
+                .filter(perfil -> !mesmoHeroi(
+                    perfil.heroi(),
+                    iniciador.heroi()
+                ))
+                .max(Comparator.comparingInt(perfil ->
+                    perfil.habilitacao()
+                        + (conectado(
+                            sinergias,
+                            perfil.heroi(),
+                            ameaca.heroi()
+                        ) ? 20 : 0)
+                ))
+                .orElse(null);
+            if (alternativo != null) {
+                habilitador = alternativo;
+            }
+        }
+
+        List<PerfilAmeacaHeroiResponse> perfis = reclassificarPapeis(
+            original.perfis(),
+            original.habilitadorCritico(),
+            habilitador
+        );
+        ameaca = buscarPerfil(perfis, ameaca.heroi());
+        iniciador = buscarPerfil(
+            perfis,
+            original.iniciadorPrincipal().heroi()
+        );
+        habilitador = buscarPerfil(perfis, habilitador.heroi());
+        PerfilAmeacaHeroiResponse protetor = original.protetorPrincipal() == null
+            ? null
+            : buscarPerfil(
+                perfis,
+                original.protetorPrincipal().heroi()
+            );
+        PerfilAmeacaHeroiResponse eloFraco = original.eloFraco() == null
+            ? null
+            : buscarPerfil(perfis, original.eloFraco().heroi());
+
+        List<AlvoPrioritarioAmeacaResponse> alvos = reconstruirAlvos(
+            ameaca,
+            protetor,
+            iniciador,
+            habilitador,
+            eloFraco,
+            sinergias
+        );
+
+        return new AnaliseAmeacasResponse(
+            ameaca,
+            protetor,
+            iniciador,
+            habilitador,
+            eloFraco,
+            perfis,
+            alvos,
+            planoResposta(ameaca, alvos)
+        );
+    }
+
+    private List<PerfilAmeacaHeroiResponse> reclassificarPapeis(
+        List<PerfilAmeacaHeroiResponse> perfis,
+        PerfilAmeacaHeroiResponse habilitadorAnterior,
+        PerfilAmeacaHeroiResponse novoHabilitador
+    ) {
+        if (
+            habilitadorAnterior == null
+                || novoHabilitador == null
+                || mesmoHeroi(
+                    habilitadorAnterior.heroi(),
+                    novoHabilitador.heroi()
+                )
+        ) {
+            return perfis;
+        }
+
+        return perfis.stream()
+            .map(perfil -> {
+                LinkedHashSet<PapelAmeaca> papeis = new LinkedHashSet<>(
+                    perfil.papeis()
+                );
+                if (mesmoHeroi(
+                    perfil.heroi(),
+                    habilitadorAnterior.heroi()
+                )) {
+                    papeis.remove(PapelAmeaca.HABILITADOR);
+                }
+                if (mesmoHeroi(
+                    perfil.heroi(),
+                    novoHabilitador.heroi()
+                )) {
+                    papeis.add(PapelAmeaca.HABILITADOR);
+                }
+                return new PerfilAmeacaHeroiResponse(
+                    perfil.heroi(),
+                    perfil.potencialVitoria(),
+                    perfil.protecao(),
+                    perfil.iniciacao(),
+                    perfil.habilitacao(),
+                    perfil.vulnerabilidade(),
+                    List.copyOf(papeis),
+                    perfil.motivos()
+                );
+            })
+            .toList();
+    }
+
+    private List<AlvoPrioritarioAmeacaResponse> reconstruirAlvos(
+        PerfilAmeacaHeroiResponse ameaca,
+        PerfilAmeacaHeroiResponse protetor,
+        PerfilAmeacaHeroiResponse iniciador,
+        PerfilAmeacaHeroiResponse habilitador,
+        PerfilAmeacaHeroiResponse eloFraco,
+        List<SinergiaGrupoResponse> sinergias
+    ) {
+        List<AlvoPrioritarioAmeacaResponse> candidatos = new ArrayList<>();
+        boolean ameacaProtegida = conectado(
+            sinergias,
+            ameaca.heroi(),
+            iniciador == null ? null : iniciador.heroi()
+        ) || conectado(
+            sinergias,
+            ameaca.heroi(),
+            habilitador == null ? null : habilitador.heroi()
+        );
+        candidatos.add(alvo(
+            ameaca,
+            PapelAmeaca.AMEACA_PRINCIPAL,
+            ameaca.potencialVitoria() - (ameacaProtegida ? 8 : 0)
+        ));
+        if (iniciador != null) {
+            candidatos.add(alvo(
+                iniciador,
+                PapelAmeaca.INICIADOR,
+                iniciador.iniciacao()
+                    + (conectado(
+                        sinergias,
+                        iniciador.heroi(),
+                        ameaca.heroi()
+                    ) ? 30 : 8)
+            ));
+        }
+        if (habilitador != null) {
+            candidatos.add(alvo(
+                habilitador,
+                PapelAmeaca.HABILITADOR,
+                habilitador.habilitacao()
+                    + (conectado(
+                        sinergias,
+                        habilitador.heroi(),
+                        ameaca.heroi()
+                    ) ? 22 : 5)
+            ));
+        }
+        if (protetor != null) {
+            candidatos.add(alvo(
+                protetor,
+                PapelAmeaca.PROTETOR,
+                protetor.protecao()
+                    + (conectado(
+                        sinergias,
+                        protetor.heroi(),
+                        ameaca.heroi()
+                    ) ? 10 : 0)
+            ));
+        }
+        if (eloFraco != null) {
+            candidatos.add(alvo(
+                eloFraco,
+                PapelAmeaca.ELO_FRACO,
+                eloFraco.vulnerabilidade()
+            ));
+        }
+
+        Map<String, AlvoPrioritarioAmeacaResponse> unicos =
+            new LinkedHashMap<>();
+        candidatos.forEach(candidato -> unicos.merge(
+            normalizar(candidato.heroi()),
+            candidato,
+            (atual, novo) -> atual.prioridade() >= novo.prioridade()
+                ? atual
+                : novo
+        ));
+        return unicos.values().stream()
+            .sorted(
+                Comparator.comparingInt(
+                    AlvoPrioritarioAmeacaResponse::prioridade
+                ).reversed()
+            )
+            .limit(4)
+            .toList();
+    }
+
+    private AlvoPrioritarioAmeacaResponse alvo(
+        PerfilAmeacaHeroiResponse perfil,
+        PapelAmeaca papel,
+        int prioridade
+    ) {
+        String justificativa = switch (papel) {
+            case AMEACA_PRINCIPAL ->
+                perfil.heroi()
+                    + " possui o maior potencial individual de vencer a partida.";
+            case INICIADOR ->
+                perfil.heroi()
+                    + " cria a janela de entrada que permite ao dano principal funcionar.";
+            case HABILITADOR ->
+                perfil.heroi()
+                    + " amplifica, conecta ou permite repetir a condição de vitória inimiga.";
+            case PROTETOR ->
+                perfil.heroi()
+                    + " mantém o carregador vivo e preserva sua janela de dano.";
+            case ELO_FRACO ->
+                perfil.heroi()
+                    + " apresenta a maior exposição ou dependência explorável.";
+        };
+        return new AlvoPrioritarioAmeacaResponse(
+            perfil.heroi(),
+            papel,
+            limitar(prioridade, 0, 100),
+            respostas(papel),
+            justificativa
+        );
+    }
+
+    private List<DimensaoEstrategica> respostas(PapelAmeaca papel) {
+        return switch (papel) {
+            case AMEACA_PRINCIPAL -> List.of(
+                DimensaoEstrategica.CONTROLE,
+                DimensaoEstrategica.DIVE,
+                DimensaoEstrategica.EXPLOSAO,
+                DimensaoEstrategica.MOBILIDADE
+            );
+            case INICIADOR -> List.of(
+                DimensaoEstrategica.DESENGAGE,
+                DimensaoEstrategica.PEEL,
+                DimensaoEstrategica.CONTROLE,
+                DimensaoEstrategica.MOBILIDADE
+            );
+            case HABILITADOR -> List.of(
+                DimensaoEstrategica.CONTROLE,
+                DimensaoEstrategica.EXPLOSAO,
+                DimensaoEstrategica.MOBILIDADE,
+                DimensaoEstrategica.ALCANCE
+            );
+            case PROTETOR -> List.of(
+                DimensaoEstrategica.ANTI_CURA,
+                DimensaoEstrategica.DIVE,
+                DimensaoEstrategica.CONTROLE,
+                DimensaoEstrategica.EXPLOSAO
+            );
+            case ELO_FRACO -> List.of(
+                DimensaoEstrategica.EXPLOSAO,
+                DimensaoEstrategica.DIVE,
+                DimensaoEstrategica.ALCANCE
+            );
+        };
+    }
+
+    private String planoResposta(
+        PerfilAmeacaHeroiResponse ameaca,
+        List<AlvoPrioritarioAmeacaResponse> alvos
+    ) {
+        if (alvos.isEmpty()) {
+            return "Não foi possível estabelecer uma prioridade de resposta.";
+        }
+        AlvoPrioritarioAmeacaResponse primeiro = alvos.getFirst();
+        if (!mesmoHeroi(primeiro.heroi(), ameaca.heroi())) {
+            return "Embora " + ameaca.heroi()
+                + " seja a maior ameaça, a resposta mais eficiente começa por "
+                + primeiro.heroi() + ". " + primeiro.justificativa()
+                + " Neutralizar essa peça reduz a janela do carregador antes do confronto direto.";
+        }
+        return "A prioridade é limitar " + ameaca.heroi()
+            + " diretamente antes que alcance sua janela de dano e escalamento.";
+    }
+
+    private PerfilAmeacaHeroiResponse buscarPerfil(
+        List<PerfilAmeacaHeroiResponse> perfis,
+        String nome
+    ) {
+        return perfis.stream()
+            .filter(perfil -> mesmoHeroi(perfil.heroi(), nome))
+            .findFirst()
+            .orElseThrow();
+    }
+
+    private boolean conectado(
+        List<SinergiaGrupoResponse> sinergias,
+        String primeiro,
+        String segundo
+    ) {
+        if (primeiro == null || segundo == null) {
+            return false;
+        }
+        return sinergias.stream()
+            .filter(SinergiaGrupoResponse::ativa)
+            .anyMatch(sinergia ->
+                contemNome(sinergia.membros(), primeiro)
+                    && contemNome(sinergia.membros(), segundo)
+            );
+    }
+
+    private boolean contemNome(List<String> nomes, String procurado) {
+        return nomes.stream().anyMatch(nome -> mesmoHeroi(nome, procurado));
+    }
+
+    private boolean mesmoHeroi(String primeiro, String segundo) {
+        return normalizar(primeiro).equals(normalizar(segundo));
     }
 
     private RecomendacaoDnaResponse ajustarRespostaAmeaca(
