@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class HeroiServiceCompleto extends HeroiService {
 
     private final List<Heroi> herois;
 
+    @Autowired
     public HeroiServiceCompleto(
         CatalogoSuporteRepository catalogoSuporte,
         CatalogoMidRepository catalogoMid,
@@ -37,6 +39,13 @@ public class HeroiServiceCompleto extends HeroiService {
             heroi -> porId.put(heroi.getId(), heroi)
         );
         this.herois = List.copyOf(porId.values());
+    }
+
+    public HeroiServiceCompleto(
+        CatalogoSuporteRepository catalogoSuporte,
+        CatalogoMidRepository catalogoMid
+    ) {
+        this(catalogoSuporte, catalogoMid, new CatalogoJungleRepository());
     }
 
     @Override
