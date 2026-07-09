@@ -7,22 +7,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.carlosdaniel.hokdraftcoach.dto.AnaliseAmeacasResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.CurvaPoderComposicaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.DiagnosticoComposicaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoDnaResponse;
 import br.com.carlosdaniel.hokdraftcoach.model.DnaComposicao;
 import br.com.carlosdaniel.hokdraftcoach.model.PerfilTemporalHeroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
-import br.com.carlosdaniel.hokdraftcoach.service.AnaliseTemporalSinergiaService;
+import br.com.carlosdaniel.hokdraftcoach.service.AnaliseAmeacaComposicaoService;
 
 @RestController
 @RequestMapping("/api/composicoes")
 public class ComposicaoController {
 
-    private final AnaliseTemporalSinergiaService dnaComposicaoService;
+    private final AnaliseAmeacaComposicaoService dnaComposicaoService;
 
     public ComposicaoController(
-        AnaliseTemporalSinergiaService dnaComposicaoService
+        AnaliseAmeacaComposicaoService dnaComposicaoService
     ) {
         this.dnaComposicaoService = dnaComposicaoService;
     }
@@ -46,6 +47,13 @@ public class ComposicaoController {
         @RequestParam List<String> herois
     ) {
         return dnaComposicaoService.curvaPoder(herois);
+    }
+
+    @GetMapping("/ameacas")
+    public AnaliseAmeacasResponse analisarAmeacas(
+        @RequestParam List<String> inimigos
+    ) {
+        return dnaComposicaoService.analisarAmeacas(inimigos);
     }
 
     @GetMapping("/diagnostico")
