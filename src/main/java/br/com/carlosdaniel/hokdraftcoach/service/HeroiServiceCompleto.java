@@ -102,7 +102,14 @@ public class HeroiServiceCompleto extends HeroiService {
     }
 
     private void adicionar(Map<String, Heroi> destino, List<Heroi> origem) {
-        origem.forEach(heroi -> destino.put(normalizar(heroi.getNome()), heroi));
+        origem.forEach(heroi -> {
+            String chave = normalizar(heroi.getNome());
+            destino.entrySet().removeIf(entrada ->
+                entrada.getValue().getId().equals(heroi.getId())
+                    && !entrada.getKey().equals(chave)
+            );
+            destino.put(chave, heroi);
+        });
     }
 
     private String normalizar(String valor) {
