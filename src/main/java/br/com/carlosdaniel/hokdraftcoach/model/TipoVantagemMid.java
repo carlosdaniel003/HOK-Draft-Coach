@@ -6,5 +6,6 @@ public enum TipoVantagemMid {
     ROTACAO,
     LUTA,
     MAPA,
-    ESCALAMENTO
+    ESCALAMENTO,
+    PICKOFF
 }
