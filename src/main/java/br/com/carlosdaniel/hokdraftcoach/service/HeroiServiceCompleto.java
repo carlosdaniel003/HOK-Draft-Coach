@@ -1,7 +1,9 @@
 package br.com.carlosdaniel.hokdraftcoach.service;
 
+import java.text.Normalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,8 +29,7 @@ public class HeroiServiceCompleto extends HeroiService {
         CatalogoMidRepository catalogoMid,
         CatalogoJungleRepository catalogoJungle
     ) {
-        Map<Long, Heroi> porId = new LinkedHashMap<>();
-        super.listarTodos().forEach(heroi -> porId.put(heroi.getId(), heroi));
+        Map<Long, Heroi> porId = catalogoBase();
         catalogoSuporte.listarTodos().forEach(
             heroi -> porId.put(heroi.getId(), heroi)
         );
@@ -45,7 +46,14 @@ public class HeroiServiceCompleto extends HeroiService {
         CatalogoSuporteRepository catalogoSuporte,
         CatalogoMidRepository catalogoMid
     ) {
-        this(catalogoSuporte, catalogoMid, new CatalogoJungleRepository());
+        Map<Long, Heroi> porId = catalogoBase();
+        catalogoSuporte.listarTodos().forEach(
+            heroi -> porId.put(heroi.getId(), heroi)
+        );
+        catalogoMid.listarTodos().forEach(
+            heroi -> porId.put(heroi.getId(), heroi)
+        );
+        this.herois = List.copyOf(porId.values());
     }
 
     @Override
@@ -69,8 +77,32 @@ public class HeroiServiceCompleto extends HeroiService {
 
     @Override
     public Optional<Heroi> buscarPorNome(String nome) {
-        return herois.stream()
-            .filter(heroi -> heroi.correspondeAoNome(nome))
+        String nomeNormalizado = normalizar(nome);
+
+        Optional<Heroi> nomeCanonico = herois.stream()
+            .filter(heroi -> normalizar(heroi.getNome()).equals(nomeNormalizado))
             .findFirst();
+
+        return nomeCanonico.isPresent()
+            ? nomeCanonico
+            : herois.stream()
+                .filter(heroi -> heroi.correspondeAoNome(nome))
+                .findFirst();
+    }
+
+    private Map<Long, Heroi> catalogoBase() {
+        Map<Long, Heroi> porId = new LinkedHashMap<>();
+        super.listarTodos().forEach(heroi -> porId.put(heroi.getId(), heroi));
+        return porId;
+    }
+
+    private String normalizar(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        return Normalizer.normalize(valor, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "")
+            .replaceAll("[^a-zA-Z0-9]", "")
+            .toLowerCase(Locale.ROOT);
     }
 }
