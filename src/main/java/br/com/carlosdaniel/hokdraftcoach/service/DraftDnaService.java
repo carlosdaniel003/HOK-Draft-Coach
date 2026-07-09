@@ -24,12 +24,12 @@ public class DraftDnaService {
 
     private final DraftService draftService;
     private final HeroiService heroiService;
-    private final AnaliseTemporalSinergiaService dnaComposicaoService;
+    private final AnaliseAmeacaComposicaoService dnaComposicaoService;
 
     public DraftDnaService(
         DraftService draftService,
         HeroiService heroiService,
-        AnaliseTemporalSinergiaService dnaComposicaoService
+        AnaliseAmeacaComposicaoService dnaComposicaoService
     ) {
         this.draftService = draftService;
         this.heroiService = heroiService;
@@ -80,7 +80,7 @@ public class DraftDnaService {
 
         List<String> avisos = new ArrayList<>(base.avisos());
         avisos.add(
-            "O diagnóstico de composição, curva temporal, sinergias de grupo e anti-sinergias foi calculado antes da ordenação dos candidatos."
+            "O diagnóstico de composição, curva temporal, sinergias, anti-sinergias e mapa de ameaças foi calculado antes da ordenação dos candidatos."
         );
 
         return new AnaliseDraftResponse(
@@ -118,6 +118,7 @@ public class DraftDnaService {
         componentes.put("curvaTemporal", dna.ajusteTemporal());
         componentes.put("sinergiaGrupo", dna.bonusSinergiaGrupo());
         componentes.put("antiSinergia", -dna.penalidadeAntiSinergia());
+        componentes.put("respostaAmeaca", dna.bonusRespostaAmeaca());
 
         List<String> motivos = new ArrayList<>(base.motivos());
         if (!dna.corrige().isEmpty()) {
@@ -126,7 +127,13 @@ public class DraftDnaService {
         if (!dna.explora().isEmpty()) {
             motivos.add("Explora o DNA inimigo: " + dna.explora() + ".");
         }
-        motivos.addAll(dna.motivos().stream().limit(4).toList());
+        if (!dna.alvosAmeacaRespondidos().isEmpty()) {
+            motivos.add(
+                "Responde aos alvos estratégicos: "
+                    + dna.alvosAmeacaRespondidos() + "."
+            );
+        }
+        motivos.addAll(dna.motivos().stream().limit(5).toList());
         dna.alertas().stream()
             .limit(2)
             .forEach(alerta -> motivos.add("Risco: " + alerta));
@@ -138,7 +145,7 @@ public class DraftDnaService {
             pontuacaoFinal,
             nivel(pontuacaoFinal),
             Map.copyOf(componentes),
-            motivos.stream().distinct().limit(10).toList(),
+            motivos.stream().distinct().limit(11).toList(),
             base.dadosValidados()
         );
     }
