@@ -8,6 +8,7 @@ public enum ArquetipoClash {
     SPLIT_PUSHER,
     INICIADOR,
     FLANQUEADOR,
+    FLanqueador,
     MAGO_DE_ROTA,
     ANTI_TANQUE,
     ANTI_CARRY,
