@@ -20,5 +20,8 @@ public enum TipoComposicao {
     PRESSAO_DE_TORRE,
     WAVE_CLEAR,
     OBJETIVOS,
-    ROTACAO
+    ROTACAO,
+    ARTILHARIA,
+    ANTI_DIVE,
+    ESCALAMENTO
 }
