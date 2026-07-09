@@ -11,12 +11,39 @@ public record RecomendacaoDnaResponse(
     int pontuacao,
     List<DimensaoEstrategica> corrige,
     List<DimensaoEstrategica> explora,
-    List<String> motivos
+    int dependenciaRecursos,
+    int ajusteEconomico,
+    int penalidadeRedundancia,
+    List<String> motivos,
+    List<String> alertas
 ) {
 
     public RecomendacaoDnaResponse {
         corrige = List.copyOf(corrige);
         explora = List.copyOf(explora);
         motivos = List.copyOf(motivos);
+        alertas = List.copyOf(alertas);
+    }
+
+    public RecomendacaoDnaResponse(
+        String heroi,
+        Rota rota,
+        int pontuacao,
+        List<DimensaoEstrategica> corrige,
+        List<DimensaoEstrategica> explora,
+        List<String> motivos
+    ) {
+        this(
+            heroi,
+            rota,
+            pontuacao,
+            corrige,
+            explora,
+            0,
+            0,
+            0,
+            motivos,
+            List.of()
+        );
     }
 }
