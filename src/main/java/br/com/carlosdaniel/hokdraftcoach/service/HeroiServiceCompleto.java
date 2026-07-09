@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoClashRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoJungleRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoMidRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoSuporteRepository;
@@ -27,33 +28,37 @@ public class HeroiServiceCompleto extends HeroiService {
     public HeroiServiceCompleto(
         CatalogoSuporteRepository catalogoSuporte,
         CatalogoMidRepository catalogoMid,
+        CatalogoJungleRepository catalogoJungle,
+        CatalogoClashRepository catalogoClash
+    ) {
+        Map<String, Heroi> porNome = catalogoBase();
+        adicionar(porNome, catalogoSuporte.listarTodos());
+        adicionar(porNome, catalogoMid.listarTodos());
+        adicionar(porNome, catalogoJungle.listarTodos());
+        adicionar(porNome, catalogoClash.listarTodos());
+        this.herois = List.copyOf(porNome.values());
+    }
+
+    public HeroiServiceCompleto(
+        CatalogoSuporteRepository catalogoSuporte,
+        CatalogoMidRepository catalogoMid,
         CatalogoJungleRepository catalogoJungle
     ) {
-        Map<Long, Heroi> porId = catalogoBase();
-        catalogoSuporte.listarTodos().forEach(
-            heroi -> porId.put(heroi.getId(), heroi)
-        );
-        catalogoMid.listarTodos().forEach(
-            heroi -> porId.put(heroi.getId(), heroi)
-        );
-        catalogoJungle.listarTodos().forEach(
-            heroi -> porId.put(heroi.getId(), heroi)
-        );
-        this.herois = List.copyOf(porId.values());
+        Map<String, Heroi> porNome = catalogoBase();
+        adicionar(porNome, catalogoSuporte.listarTodos());
+        adicionar(porNome, catalogoMid.listarTodos());
+        adicionar(porNome, catalogoJungle.listarTodos());
+        this.herois = List.copyOf(porNome.values());
     }
 
     public HeroiServiceCompleto(
         CatalogoSuporteRepository catalogoSuporte,
         CatalogoMidRepository catalogoMid
     ) {
-        Map<Long, Heroi> porId = catalogoBase();
-        catalogoSuporte.listarTodos().forEach(
-            heroi -> porId.put(heroi.getId(), heroi)
-        );
-        catalogoMid.listarTodos().forEach(
-            heroi -> porId.put(heroi.getId(), heroi)
-        );
-        this.herois = List.copyOf(porId.values());
+        Map<String, Heroi> porNome = catalogoBase();
+        adicionar(porNome, catalogoSuporte.listarTodos());
+        adicionar(porNome, catalogoMid.listarTodos());
+        this.herois = List.copyOf(porNome.values());
     }
 
     @Override
@@ -90,10 +95,14 @@ public class HeroiServiceCompleto extends HeroiService {
                 .findFirst();
     }
 
-    private Map<Long, Heroi> catalogoBase() {
-        Map<Long, Heroi> porId = new LinkedHashMap<>();
-        super.listarTodos().forEach(heroi -> porId.put(heroi.getId(), heroi));
-        return porId;
+    private Map<String, Heroi> catalogoBase() {
+        Map<String, Heroi> porNome = new LinkedHashMap<>();
+        adicionar(porNome, super.listarTodos());
+        return porNome;
+    }
+
+    private void adicionar(Map<String, Heroi> destino, List<Heroi> origem) {
+        origem.forEach(heroi -> destino.put(normalizar(heroi.getNome()), heroi));
     }
 
     private String normalizar(String valor) {
