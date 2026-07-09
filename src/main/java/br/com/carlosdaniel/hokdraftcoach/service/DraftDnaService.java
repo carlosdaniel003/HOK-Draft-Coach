@@ -24,12 +24,12 @@ public class DraftDnaService {
 
     private final DraftService draftService;
     private final HeroiService heroiService;
-    private final DnaComposicaoService dnaComposicaoService;
+    private final AnaliseTemporalSinergiaService dnaComposicaoService;
 
     public DraftDnaService(
         DraftService draftService,
         HeroiService heroiService,
-        DnaComposicaoService dnaComposicaoService
+        AnaliseTemporalSinergiaService dnaComposicaoService
     ) {
         this.draftService = draftService;
         this.heroiService = heroiService;
@@ -80,7 +80,7 @@ public class DraftDnaService {
 
         List<String> avisos = new ArrayList<>(base.avisos());
         avisos.add(
-            "O diagnóstico de composição foi calculado antes da ordenação dos candidatos."
+            "O diagnóstico de composição, curva temporal, sinergias de grupo e anti-sinergias foi calculado antes da ordenação dos candidatos."
         );
 
         return new AnaliseDraftResponse(
@@ -115,6 +115,9 @@ public class DraftDnaService {
             base.componentes()
         );
         componentes.put("dnaComposicao", componenteDna);
+        componentes.put("curvaTemporal", dna.ajusteTemporal());
+        componentes.put("sinergiaGrupo", dna.bonusSinergiaGrupo());
+        componentes.put("antiSinergia", -dna.penalidadeAntiSinergia());
 
         List<String> motivos = new ArrayList<>(base.motivos());
         if (!dna.corrige().isEmpty()) {
@@ -123,7 +126,10 @@ public class DraftDnaService {
         if (!dna.explora().isEmpty()) {
             motivos.add("Explora o DNA inimigo: " + dna.explora() + ".");
         }
-        motivos.addAll(dna.motivos().stream().limit(2).toList());
+        motivos.addAll(dna.motivos().stream().limit(4).toList());
+        dna.alertas().stream()
+            .limit(2)
+            .forEach(alerta -> motivos.add("Risco: " + alerta));
 
         return new RecomendacaoDraftResponse(
             base.heroiId(),
@@ -132,7 +138,7 @@ public class DraftDnaService {
             pontuacaoFinal,
             nivel(pontuacaoFinal),
             Map.copyOf(componentes),
-            motivos.stream().distinct().limit(8).toList(),
+            motivos.stream().distinct().limit(10).toList(),
             base.dadosValidados()
         );
     }
