@@ -15,5 +15,10 @@ public enum TipoComposicao {
     SPLIT_PUSH,
     ULTIMATES_DECISIVAS,
     PICKOFF,
-    DESENGAGE
+    DESENGAGE,
+    CERCO,
+    PRESSAO_DE_TORRE,
+    WAVE_CLEAR,
+    OBJETIVOS,
+    ROTACAO
 }
