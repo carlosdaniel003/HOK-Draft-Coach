@@ -24,5 +24,8 @@ public enum TipoComposicao {
     ARTILHARIA,
     ANTI_DIVE,
     ESCALAMENTO,
-    ASSASSINO_MAGICO
+    ASSASSINO_MAGICO,
+    INVASAO,
+    SNOWBALL,
+    ANTI_TANQUE
 }
