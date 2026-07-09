@@ -1,5 +1,6 @@
 package br.com.carlosdaniel.hokdraftcoach.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,6 +17,7 @@ import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import br.com.carlosdaniel.hokdraftcoach.model.TipoOpcaoPick;
 import br.com.carlosdaniel.hokdraftcoach.repository.AntiSinergiaRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoClashRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoJungleRepository;
@@ -77,11 +79,20 @@ class IntegracaoDnaMotorDraftTest {
         );
         RecomendacaoProximoPickService base =
             new RecomendacaoProximoPickService(heroiService, inferencia);
+        ProjecaoRespostaInimigaService projecao =
+            new ProjecaoRespostaInimigaService(
+                heroiService,
+                inferencia,
+                dnaService,
+                ameacas
+            );
         proximoPickDnaService = new RecomendacaoProximoPickDnaService(
             base,
             heroiService,
             dnaService,
-            new SegurancaBlindPickService()
+            new SegurancaBlindPickService(),
+            projecao,
+            new ExplicacaoRecomendacaoService()
         );
     }
 
@@ -119,7 +130,7 @@ class IntegracaoDnaMotorDraftTest {
     }
 
     @Test
-    void deveDiagnosticarAntesDeOrdenarOProximoPick() {
+    void deveProjetarRespostasEOferecerTresOpcoesExplicadas() {
         RecomendacaoProximoPickRequest request =
             new RecomendacaoProximoPickRequest(
                 LadoDraft.AZUL,
@@ -141,18 +152,31 @@ class IntegracaoDnaMotorDraftTest {
         assertNotNull(resposta.contextoDraft());
         assertNotNull(resposta.recomendacaoPrincipal());
         assertNotNull(resposta.recomendacaoPrincipal().perfilBlindPick());
-        assertTrue(
-            resposta.recomendacaoPrincipal()
-                .componentes()
-                .containsKey("dnaComposicao")
+        assertEquals(3, resposta.opcoesEstrategicas().size());
+        assertEquals(
+            TipoOpcaoPick.MELHOR_GERAL,
+            resposta.opcoesEstrategicas().get(0).tipo()
         );
+        assertEquals(
+            TipoOpcaoPick.MAIS_SEGURA,
+            resposta.opcoesEstrategicas().get(1).tipo()
+        );
+        assertEquals(
+            TipoOpcaoPick.MAIOR_IMPACTO,
+            resposta.opcoesEstrategicas().get(2).tipo()
+        );
+        assertTrue(resposta.opcoesEstrategicas().stream().allMatch(opcao ->
+            opcao.projecao() != null
+                && opcao.explicacao() != null
+                && !opcao.explicacao().resumo().isBlank()
+        ));
         assertTrue(
             resposta.recomendacaoPrincipal()
                 .componentes()
-                .containsKey("ajusteOrdemDraft")
+                .containsKey("ajusteProjecao")
         );
         assertTrue(resposta.avisos().stream().anyMatch(
-            aviso -> aviso.contains("ordem do draft")
+            aviso -> aviso.contains("probabilidades")
         ));
     }
 }
