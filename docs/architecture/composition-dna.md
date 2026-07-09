@@ -127,7 +127,7 @@ A primeira versão detecta:
 Composição aliada:
 
 - Garo;
-- Hou Yi.
+- Luban No.7.
 
 O sistema pode gerar:
 
@@ -205,7 +205,7 @@ GET /api/composicoes/dna?herois=Marco%20Polo,Angela,Lian%20Po
 ### Diagnosticar os dois drafts
 
 ```http
-GET /api/composicoes/diagnostico?aliados=Garo,Hou%20Yi&inimigos=Ata,Bai%20Qi,Lian%20Po
+GET /api/composicoes/diagnostico?aliados=Garo,Luban%20No.7&inimigos=Ata,Bai%20Qi,Lian%20Po
 ```
 
 O parâmetro `inimigos` é opcional. Sem ele, o sistema analisa apenas os déficits próprios.
@@ -213,7 +213,7 @@ O parâmetro `inimigos` é opcional. Sem ele, o sistema analisa apenas os défic
 ### Recomendar uma escolha após o diagnóstico
 
 ```http
-GET /api/composicoes/recomendacoes?aliados=Garo,Hou%20Yi&inimigos=Ata,Bai%20Qi&rota=ROAMING&limite=10
+GET /api/composicoes/recomendacoes?aliados=Garo,Luban%20No.7&inimigos=Ata,Bai%20Qi&rota=ROAMING&limite=10
 ```
 
 A resposta informa:
