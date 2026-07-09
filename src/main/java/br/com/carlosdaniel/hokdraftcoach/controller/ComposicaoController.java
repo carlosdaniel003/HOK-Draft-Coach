@@ -7,19 +7,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.carlosdaniel.hokdraftcoach.dto.CurvaPoderComposicaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.DiagnosticoComposicaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoDnaResponse;
 import br.com.carlosdaniel.hokdraftcoach.model.DnaComposicao;
+import br.com.carlosdaniel.hokdraftcoach.model.PerfilTemporalHeroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
-import br.com.carlosdaniel.hokdraftcoach.service.DnaComposicaoService;
+import br.com.carlosdaniel.hokdraftcoach.service.AnaliseTemporalSinergiaService;
 
 @RestController
 @RequestMapping("/api/composicoes")
 public class ComposicaoController {
 
-    private final DnaComposicaoService dnaComposicaoService;
+    private final AnaliseTemporalSinergiaService dnaComposicaoService;
 
-    public ComposicaoController(DnaComposicaoService dnaComposicaoService) {
+    public ComposicaoController(
+        AnaliseTemporalSinergiaService dnaComposicaoService
+    ) {
         this.dnaComposicaoService = dnaComposicaoService;
     }
 
@@ -28,6 +32,20 @@ public class ComposicaoController {
         @RequestParam List<String> herois
     ) {
         return dnaComposicaoService.gerarDnaPorNomes(herois);
+    }
+
+    @GetMapping("/perfil-temporal")
+    public PerfilTemporalHeroi perfilTemporal(
+        @RequestParam String heroi
+    ) {
+        return dnaComposicaoService.perfilTemporal(heroi);
+    }
+
+    @GetMapping("/curva-poder")
+    public CurvaPoderComposicaoResponse curvaPoder(
+        @RequestParam List<String> herois
+    ) {
+        return dnaComposicaoService.curvaPoder(herois);
     }
 
     @GetMapping("/diagnostico")
