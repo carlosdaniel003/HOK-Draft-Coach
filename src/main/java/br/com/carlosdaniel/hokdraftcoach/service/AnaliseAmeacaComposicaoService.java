@@ -169,50 +169,63 @@ public class AnaliseAmeacaComposicaoService
                 : original;
         }
 
-        PerfilAmeacaHeroiResponse ameaca = original.maiorAmeaca();
-        PerfilAmeacaHeroiResponse iniciador = original.iniciadorPrincipal();
-        PerfilAmeacaHeroiResponse habilitador = original.habilitadorCritico();
+        PerfilAmeacaHeroiResponse ameacaOriginal = original.maiorAmeaca();
+        PerfilAmeacaHeroiResponse iniciadorOriginal =
+            original.iniciadorPrincipal();
+        PerfilAmeacaHeroiResponse habilitadorOriginal =
+            original.habilitadorCritico();
+        PerfilAmeacaHeroiResponse habilitadorRefinado =
+            habilitadorOriginal;
 
         if (
-            iniciador != null
-                && habilitador != null
-                && mesmoHeroi(iniciador.heroi(), habilitador.heroi())
+            iniciadorOriginal != null
+                && habilitadorOriginal != null
+                && mesmoHeroi(
+                    iniciadorOriginal.heroi(),
+                    habilitadorOriginal.heroi()
+                )
                 && original.perfis().size() > 2
         ) {
+            String nomeAmeaca = ameacaOriginal.heroi();
+            String nomeIniciador = iniciadorOriginal.heroi();
             PerfilAmeacaHeroiResponse alternativo = original.perfis().stream()
                 .filter(perfil -> !mesmoHeroi(
                     perfil.heroi(),
-                    ameaca.heroi()
+                    nomeAmeaca
                 ))
                 .filter(perfil -> !mesmoHeroi(
                     perfil.heroi(),
-                    iniciador.heroi()
+                    nomeIniciador
                 ))
                 .max(Comparator.comparingInt(perfil ->
                     perfil.habilitacao()
                         + (conectado(
                             sinergias,
                             perfil.heroi(),
-                            ameaca.heroi()
+                            nomeAmeaca
                         ) ? 20 : 0)
                 ))
                 .orElse(null);
             if (alternativo != null) {
-                habilitador = alternativo;
+                habilitadorRefinado = alternativo;
             }
         }
 
         List<PerfilAmeacaHeroiResponse> perfis = reclassificarPapeis(
             original.perfis(),
-            original.habilitadorCritico(),
-            habilitador
+            habilitadorOriginal,
+            habilitadorRefinado
         );
-        ameaca = buscarPerfil(perfis, ameaca.heroi());
-        iniciador = buscarPerfil(
+        PerfilAmeacaHeroiResponse ameaca = buscarPerfil(
             perfis,
-            original.iniciadorPrincipal().heroi()
+            ameacaOriginal.heroi()
         );
-        habilitador = buscarPerfil(perfis, habilitador.heroi());
+        PerfilAmeacaHeroiResponse iniciador = iniciadorOriginal == null
+            ? null
+            : buscarPerfil(perfis, iniciadorOriginal.heroi());
+        PerfilAmeacaHeroiResponse habilitador = habilitadorRefinado == null
+            ? null
+            : buscarPerfil(perfis, habilitadorRefinado.heroi());
         PerfilAmeacaHeroiResponse protetor = original.protetorPrincipal() == null
             ? null
             : buscarPerfil(
