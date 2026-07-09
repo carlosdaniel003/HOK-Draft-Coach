@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 
 import org.springframework.stereotype.Service;
 
@@ -49,13 +50,14 @@ public class ConhecimentoSuporteService {
         return catalogoSuporte.listarTodos()
             .stream()
             .map(heroi -> detalhar(heroi, 5))
-            .sorted(Comparator.comparing(resposta -> resposta.heroi().getNome()))
+            .sorted(Comparator.comparing(
+                resposta -> resposta.heroi().getNome()
+            ))
             .toList();
     }
 
     public SuporteDetalhadoResponse buscarSuporte(String nome) {
-        Heroi heroi = resolverSuporte(nome);
-        return detalhar(heroi, 10);
+        return detalhar(resolverSuporte(nome), 10);
     }
 
     public List<SinergiaBotLane> melhoresSuportesParaAtirador(
@@ -67,7 +69,10 @@ public class ConhecimentoSuporteService {
 
         return sinergiaRepository.listarTodas()
             .stream()
-            .filter(sinergia -> nomesIguais(sinergia.atirador(), atirador.getNome()))
+            .filter(sinergia -> nomesIguais(
+                sinergia.atirador(),
+                atirador.getNome()
+            ))
             .sorted(comparadorSinergia())
             .limit(limite)
             .toList();
@@ -82,7 +87,10 @@ public class ConhecimentoSuporteService {
 
         return sinergiaRepository.listarTodas()
             .stream()
-            .filter(sinergia -> nomesIguais(sinergia.suporte(), suporte.getNome()))
+            .filter(sinergia -> nomesIguais(
+                sinergia.suporte(),
+                suporte.getNome()
+            ))
             .sorted(comparadorSinergia())
             .limit(limite)
             .toList();
@@ -120,9 +128,13 @@ public class ConhecimentoSuporteService {
             .map(perfil -> avaliarContra(perfil, tipos))
             .sorted(
                 Comparator
-                    .comparingInt(RecomendacaoComposicaoSuporteResponse::pontuacao)
+                    .comparingInt(
+                        RecomendacaoComposicaoSuporteResponse::pontuacao
+                    )
                     .reversed()
-                    .thenComparing(RecomendacaoComposicaoSuporteResponse::suporte)
+                    .thenComparing(
+                        RecomendacaoComposicaoSuporteResponse::suporte
+                    )
             )
             .limit(limite)
             .toList();
@@ -135,7 +147,10 @@ public class ConhecimentoSuporteService {
 
         return aliados.stream()
             .filter(aliado -> aliado.podeJogarNaRota(Rota.FARM_LANE))
-            .map(aliado -> buscarSinergia(candidato.getNome(), aliado.getNome()))
+            .map(aliado -> buscarSinergia(
+                candidato.getNome(),
+                aliado.getNome()
+            ))
             .flatMap(Optional::stream)
             .mapToInt(sinergia -> (sinergia.nota() - 5) * 2)
             .max()
@@ -168,9 +183,9 @@ public class ConhecimentoSuporteService {
             return tipos;
         }
 
-        double mobilidade = media(herois, atributo -> atributo.mobilidade());
-        double alcance = media(herois, atributo -> atributo.alcance());
-        double resistencia = media(herois, atributo -> atributo.resistencia());
+        double mobilidade = media(herois, AtributosHeroi::mobilidade);
+        double alcance = media(herois, AtributosHeroi::alcance);
+        double resistencia = media(herois, AtributosHeroi::resistencia);
         long controlesFortes = herois.stream()
             .filter(heroi -> heroi.getAtributos().controle() >= 7)
             .count();
@@ -200,14 +215,29 @@ public class ConhecimentoSuporteService {
         if (imoveis >= 2) {
             tipos.add(TipoComposicao.ALVOS_IMOVEIS);
         }
-        if (possuiCaracteristica(herois, "assassino", "execucao", "mergulho")) {
+        if (possuiCaracteristica(
+            herois,
+            "assassino",
+            "execucao",
+            "mergulho"
+        )) {
             tipos.add(TipoComposicao.DIVE);
         }
-        if (possuiCaracteristica(herois, "cura", "escudo", "sustentacao")) {
+        if (possuiCaracteristica(
+            herois,
+            "cura",
+            "escudo",
+            "sustentacao"
+        )) {
             tipos.add(TipoComposicao.ESCUDOS_E_CURA);
             tipos.add(TipoComposicao.LUTAS_LONGAS);
         }
-        if (possuiCaracteristica(herois, "pickoff", "gancho", "supressao")) {
+        if (possuiCaracteristica(
+            herois,
+            "pickoff",
+            "gancho",
+            "supressao"
+        )) {
             tipos.add(TipoComposicao.PICKOFF);
         }
 
@@ -220,9 +250,13 @@ public class ConhecimentoSuporteService {
                 "Perfil estratégico ausente para " + heroi.getNome() + "."
             ));
 
-        List<SinergiaBotLane> melhoresDuplas = sinergiaRepository.listarTodas()
+        List<SinergiaBotLane> melhoresDuplas = sinergiaRepository
+            .listarTodas()
             .stream()
-            .filter(sinergia -> nomesIguais(sinergia.suporte(), heroi.getNome()))
+            .filter(sinergia -> nomesIguais(
+                sinergia.suporte(),
+                heroi.getNome()
+            ))
             .sorted(comparadorSinergia())
             .limit(limiteDuplas)
             .toList();
@@ -234,8 +268,14 @@ public class ConhecimentoSuporteService {
         PerfilSuporte perfil,
         Set<TipoComposicao> inimigos
     ) {
-        List<TipoComposicao> respostas = intersecao(perfil.quebra(), inimigos);
-        List<TipoComposicao> riscos = intersecao(perfil.sofreContra(), inimigos);
+        List<TipoComposicao> respostas = intersecao(
+            perfil.quebra(),
+            inimigos
+        );
+        List<TipoComposicao> riscos = intersecao(
+            perfil.sofreContra(),
+            inimigos
+        );
         int pontuacao = limitar(
             50 + respostas.size() * 14 - riscos.size() * 10,
             0,
@@ -250,7 +290,9 @@ public class ConhecimentoSuporteService {
             motivos.add("Pode sofrer contra: " + riscos + ".");
         }
         if (respostas.isEmpty()) {
-            motivos.add("Não possui counter direto cadastrado para os tipos informados.");
+            motivos.add(
+                "Não possui counter direto cadastrado para os tipos informados."
+            );
         }
 
         return new RecomendacaoComposicaoSuporteResponse(
@@ -303,14 +345,18 @@ public class ConhecimentoSuporteService {
     }
 
     private Comparator<SinergiaBotLane> comparadorSinergia() {
+        Comparator<SinergiaBotLane> porConfianca = Comparator
+            .comparingInt(
+                (SinergiaBotLane sinergia) -> pesoConfianca(
+                    sinergia.confianca()
+                )
+            )
+            .reversed();
+
         return Comparator
             .comparingInt(SinergiaBotLane::nota)
             .reversed()
-            .thenComparing(
-                Comparator.comparingInt(
-                    sinergia -> pesoConfianca(sinergia.confianca())
-                ).reversed()
-            )
+            .thenComparing(porConfianca)
             .thenComparing(SinergiaBotLane::suporte)
             .thenComparing(SinergiaBotLane::atirador);
     }
@@ -342,12 +388,14 @@ public class ConhecimentoSuporteService {
         return herois.stream()
             .flatMap(heroi -> heroi.getCaracteristicas().stream())
             .map(this::normalizar)
-            .anyMatch(caracteristica -> termos.stream().anyMatch(caracteristica::contains));
+            .anyMatch(caracteristica -> termos.stream().anyMatch(
+                caracteristica::contains
+            ));
     }
 
     private double media(
         List<Heroi> herois,
-        java.util.function.ToIntFunction<AtributosHeroi> extrator
+        ToIntFunction<AtributosHeroi> extrator
     ) {
         return herois.stream()
             .map(Heroi::getAtributos)
