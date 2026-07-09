@@ -23,5 +23,6 @@ public enum TipoComposicao {
     ROTACAO,
     ARTILHARIA,
     ANTI_DIVE,
-    ESCALAMENTO
+    ESCALAMENTO,
+    ASSASSINO_MAGICO
 }
