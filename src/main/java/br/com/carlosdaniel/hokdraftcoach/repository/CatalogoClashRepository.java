@@ -67,7 +67,7 @@ public class CatalogoClashRepository {
             "Lutador de execução, sustentação e pressão frontal",
             3, TipoDano.MISTO, new AtributosHeroi(6, 9, 8, 3, 10, 9), TierMeta.S,
             "execução", "sustentação", "anti-tanque", "linha de frente", "objetivos"),
-        t(209L, "Bai Qi", List.of(), ClasseHeroi.TANQUE,
+        t(209L, "Bai Qi", List.of("Baiqi"), ClasseHeroi.TANQUE,
             List.of(Rota.CLASH_LANE),
             "Tanque de provocação, cura e iniciação em área",
             2, TipoDano.FISICO, new AtributosHeroi(10, 10, 6, 2, 6, 5), TierMeta.C,
@@ -212,11 +212,11 @@ public class CatalogoClashRepository {
             "Tanque anti-controle de dano mágico prolongado",
             2, TipoDano.MAGICO, new AtributosHeroi(7, 9, 6, 4, 7, 5), TierMeta.B,
             "anti-controle", "tanque", "dano mágico", "sustentação", "proteção"),
-        t(238L, "Bai Qi", List.of("Baiqi"), ClasseHeroi.TANQUE,
-            List.of(Rota.CLASH_LANE),
-            "Tanque de provocação, sustain e engage decisivo",
-            2, TipoDano.FISICO, new AtributosHeroi(10, 10, 6, 2, 6, 5), TierMeta.C,
-            "tanque", "provocação", "sustentação", "engage", "controle em área")
+        t(238L, "Dharma", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de controle contra paredes, burst e iniciação",
+            3, TipoDano.FISICO, new AtributosHeroi(9, 7, 7, 2, 7, 9), TierMeta.C,
+            "controle", "parede", "iniciação", "explosão", "pickoff")
     );
 
     public List<Heroi> listarTodos() {
