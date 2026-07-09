@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoMidRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoSuporteRepository;
 
 @Service
@@ -18,10 +19,18 @@ public class HeroiServiceCompleto extends HeroiService {
 
     private final List<Heroi> herois;
 
-    public HeroiServiceCompleto(CatalogoSuporteRepository catalogoSuporte) {
+    public HeroiServiceCompleto(
+        CatalogoSuporteRepository catalogoSuporte,
+        CatalogoMidRepository catalogoMid
+    ) {
         Map<Long, Heroi> porId = new LinkedHashMap<>();
         super.listarTodos().forEach(heroi -> porId.put(heroi.getId(), heroi));
-        catalogoSuporte.listarTodos().forEach(heroi -> porId.put(heroi.getId(), heroi));
+        catalogoSuporte.listarTodos().forEach(
+            heroi -> porId.put(heroi.getId(), heroi)
+        );
+        catalogoMid.listarTodos().forEach(
+            heroi -> porId.put(heroi.getId(), heroi)
+        );
         this.herois = List.copyOf(porId.values());
     }
 
