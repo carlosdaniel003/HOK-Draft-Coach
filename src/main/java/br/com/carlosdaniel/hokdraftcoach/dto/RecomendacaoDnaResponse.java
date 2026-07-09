@@ -17,6 +17,8 @@ public record RecomendacaoDnaResponse(
     int ajusteTemporal,
     int bonusSinergiaGrupo,
     int penalidadeAntiSinergia,
+    int bonusRespostaAmeaca,
+    List<String> alvosAmeacaRespondidos,
     List<String> motivos,
     List<String> alertas
 ) {
@@ -24,8 +26,43 @@ public record RecomendacaoDnaResponse(
     public RecomendacaoDnaResponse {
         corrige = List.copyOf(corrige);
         explora = List.copyOf(explora);
+        alvosAmeacaRespondidos = List.copyOf(alvosAmeacaRespondidos);
         motivos = List.copyOf(motivos);
         alertas = List.copyOf(alertas);
+    }
+
+    public RecomendacaoDnaResponse(
+        String heroi,
+        Rota rota,
+        int pontuacao,
+        List<DimensaoEstrategica> corrige,
+        List<DimensaoEstrategica> explora,
+        int dependenciaRecursos,
+        int ajusteEconomico,
+        int penalidadeRedundancia,
+        int ajusteTemporal,
+        int bonusSinergiaGrupo,
+        int penalidadeAntiSinergia,
+        List<String> motivos,
+        List<String> alertas
+    ) {
+        this(
+            heroi,
+            rota,
+            pontuacao,
+            corrige,
+            explora,
+            dependenciaRecursos,
+            ajusteEconomico,
+            penalidadeRedundancia,
+            ajusteTemporal,
+            bonusSinergiaGrupo,
+            penalidadeAntiSinergia,
+            0,
+            List.of(),
+            motivos,
+            alertas
+        );
     }
 
     public RecomendacaoDnaResponse(
@@ -52,6 +89,8 @@ public record RecomendacaoDnaResponse(
             0,
             0,
             0,
+            0,
+            List.of(),
             motivos,
             alertas
         );
@@ -77,6 +116,8 @@ public record RecomendacaoDnaResponse(
             0,
             0,
             0,
+            0,
+            List.of(),
             motivos,
             List.of()
         );
