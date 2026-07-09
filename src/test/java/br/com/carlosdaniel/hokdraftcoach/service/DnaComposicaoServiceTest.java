@@ -16,7 +16,6 @@ import br.com.carlosdaniel.hokdraftcoach.exception.RegraNegocioException;
 import br.com.carlosdaniel.hokdraftcoach.model.DimensaoEstrategica;
 import br.com.carlosdaniel.hokdraftcoach.model.DnaComposicao;
 import br.com.carlosdaniel.hokdraftcoach.model.DnaHeroi;
-import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoClashRepository;
 import br.com.carlosdaniel.hokdraftcoach.repository.CatalogoJungleRepository;
@@ -61,7 +60,7 @@ class DnaComposicaoServiceTest {
     void deveDiagnosticarDanoSemIniciacao() {
         DiagnosticoComposicaoResponse resposta =
             dnaComposicaoService.diagnosticar(
-                List.of("Garo", "Hou Yi"),
+                List.of("Garo", "Luban No.7"),
                 List.of()
             );
 
@@ -95,7 +94,7 @@ class DnaComposicaoServiceTest {
     void deveDiagnosticarDiveSemPeel() {
         DiagnosticoComposicaoResponse resposta =
             dnaComposicaoService.diagnosticar(
-                List.of("Garo", "Angela"),
+                List.of("Garo", "Luban No.7"),
                 List.of("Lam", "Sima Yi", "Mulan")
             );
 
@@ -123,11 +122,11 @@ class DnaComposicaoServiceTest {
     @Test
     void deveRecomendarAntesDeTudoQuemCorrigeODeficit() {
         DnaComposicao antes = dnaComposicaoService.gerarDnaPorNomes(
-            List.of("Garo", "Hou Yi")
+            List.of("Garo", "Luban No.7")
         );
         List<RecomendacaoDnaResponse> recomendacoes =
             dnaComposicaoService.recomendar(
-                List.of("Garo", "Hou Yi"),
+                List.of("Garo", "Luban No.7"),
                 List.of("Ata", "Bai Qi"),
                 Rota.ROAMING,
                 10
@@ -144,7 +143,7 @@ class DnaComposicaoServiceTest {
         );
 
         DnaComposicao depois = dnaComposicaoService.gerarDnaPorNomes(
-            List.of("Garo", "Hou Yi", recomendada.heroi())
+            List.of("Garo", "Luban No.7", recomendada.heroi())
         );
         assertTrue(
             depois.valor(DimensaoEstrategica.ENGAGE)
@@ -182,9 +181,5 @@ class DnaComposicaoServiceTest {
                 List.of("Herói inexistente")
             )
         );
-    }
-
-    private Heroi buscar(String nome) {
-        return heroiService.buscarPorNome(nome).orElseThrow();
     }
 }
