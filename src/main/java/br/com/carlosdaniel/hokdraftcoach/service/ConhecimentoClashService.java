@@ -204,21 +204,21 @@ public class ConhecimentoClashService {
             return 0;
         }
 
-        Optional<ConfrontoClashLane> favoravel = buscarConfronto(
+        int vantagemDireta = buscarConfronto(
             candidato.getNome(),
             adversario.getNome()
-        );
-        if (favoravel.isPresent()) {
-            return (favoravel.get().vantagem() - 5) * 2;
-        }
+        )
+            .map(this::converterVantagemEmPontos)
+            .orElse(0);
 
-        Optional<ConfrontoClashLane> desfavoravel = buscarConfronto(
+        int vantagemAdversaria = buscarConfronto(
             adversario.getNome(),
             candidato.getNome()
-        );
-        return desfavoravel
-            .map(confronto -> -((confronto.vantagem() - 5) * 2))
+        )
+            .map(this::converterVantagemEmPontos)
             .orElse(0);
+
+        return limitar(vantagemDireta - vantagemAdversaria, -10, 10);
     }
 
     public int pontuarSinergia(Heroi candidato, List<Heroi> aliados) {
@@ -564,6 +564,10 @@ public class ConhecimentoClashService {
             bonus += 2;
         }
         return bonus;
+    }
+
+    private int converterVantagemEmPontos(ConfrontoClashLane confronto) {
+        return Math.max(0, confronto.vantagem() - 5) * 2;
     }
 
     private Heroi resolverTop(String nome) {
