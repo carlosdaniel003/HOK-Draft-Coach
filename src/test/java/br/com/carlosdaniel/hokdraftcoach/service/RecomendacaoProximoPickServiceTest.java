@@ -21,13 +21,12 @@ import org.junit.jupiter.api.Test;
 
 class RecomendacaoProximoPickServiceTest {
 
-    private RecomendacaoProximoPickService service;
+  private RecomendacaoProximoPickService service;
 
-    @BeforeEach
-    void configurar() {
-        HeroiService heroiService = new HeroiService();
-        InferenciaFuncoesService inferenciaService =
-            new InferenciaFuncoesService(heroiService);
+  @BeforeEach
+  void configurar() {
+    HeroiService heroiService = new HeroiService();
+    InferenciaFuncoesService inferenciaService = new InferenciaFuncoesService(heroiService);
 
     service = new RecomendacaoProximoPickService(heroiService, inferenciaService);
   }
@@ -86,122 +85,101 @@ class RecomendacaoProximoPickServiceTest {
             List.of(),
             List.of(Rota.MID_LANE));
 
-        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+    RecomendacaoProximoPickResponse resposta = service.recomendar(request);
 
-        assertEquals("FASE_DE_BANS", resposta.estadoDraft());
-        assertNull(resposta.recomendacaoPrincipal());
-        assertTrue(resposta.alternativas().isEmpty());
-    }
+    assertEquals("FASE_DE_BANS", resposta.estadoDraft());
+    assertNull(resposta.recomendacaoPrincipal());
+    assertTrue(resposta.alternativas().isEmpty());
+  }
 
-    @Test
-    void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {
-        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+  @Test
+  void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,
             1,
             List.of(1L, 2L, 3L),
             List.of(1L, 4L, 5L),
             List.of(),
             List.of(),
-            List.of(Rota.MID_LANE)
-        );
+            List.of(Rota.MID_LANE));
 
-        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+    RecomendacaoProximoPickResponse resposta = service.recomendar(request);
 
-        assertEquals("MINHA_VEZ", resposta.estadoDraft());
-        assertNotNull(resposta.recomendacaoPrincipal());
-        assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));
-    }
+    assertEquals("MINHA_VEZ", resposta.estadoDraft());
+    assertNotNull(resposta.recomendacaoPrincipal());
+    assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));
+  }
 
-    @Test
-    void deveRejeitarBanRepetidoNaMesmaEquipe() {
-        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+  @Test
+  void deveRejeitarBanRepetidoNaMesmaEquipe() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,
             1,
             List.of(1L, 1L, 2L),
             List.of(3L, 4L, 5L),
             List.of(),
             List.of(),
-            List.of()
-        );
+            List.of());
 
-        RegraNegocioException erro = assertThrows(
-            RegraNegocioException.class,
-            () -> service.recomendar(request)
-        );
+    RegraNegocioException erro =
+        assertThrows(RegraNegocioException.class, () -> service.recomendar(request));
 
-        assertTrue(erro.getMessage().contains("lado azul"));
-    }
+    assertTrue(erro.getMessage().contains("lado azul"));
+  }
 
-    @Test
-    void deveRejeitarHeroiBanidoNosPicks() {
-        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+  @Test
+  void deveRejeitarHeroiBanidoNosPicks() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,
             2,
             List.of(1L, 2L, 3L),
             List.of(4L, 5L, 6L),
             List.of(new PickSemFuncaoRequest(1, 1L)),
             List.of(),
-            List.of()
-        );
+            List.of());
 
-        assertThrows(
-            RegraNegocioException.class,
-            () -> service.recomendar(request)
-        );
-    }
+    assertThrows(RegraNegocioException.class, () -> service.recomendar(request));
+  }
 
-    @Test
-    void deveBloquearComposicaoAliadaSemDistribuicaoValida() {
-        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+  @Test
+  void deveBloquearComposicaoAliadaSemDistribuicaoValida() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,
             3,
             List.of(1L, 2L, 3L),
             List.of(4L, 5L, 6L),
-            List.of(
-                new PickSemFuncaoRequest(1, 14L),
-                new PickSemFuncaoRequest(2, 15L)
-            ),
-            List.of(
-                new PickSemFuncaoRequest(1, 8L),
-                new PickSemFuncaoRequest(2, 9L)
-            ),
-            List.of(Rota.MID_LANE)
-        );
+            List.of(new PickSemFuncaoRequest(1, 14L), new PickSemFuncaoRequest(2, 15L)),
+            List.of(new PickSemFuncaoRequest(1, 8L), new PickSemFuncaoRequest(2, 9L)),
+            List.of(Rota.MID_LANE));
 
-        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+    RecomendacaoProximoPickResponse resposta = service.recomendar(request);
 
-        assertEquals(
-            "COMPOSICAO_ALIADA_INCOMPATIVEL",
-            resposta.estadoDraft()
-        );
-        assertNull(resposta.recomendacaoPrincipal());
-    }
+    assertEquals("COMPOSICAO_ALIADA_INCOMPATIVEL", resposta.estadoDraft());
+    assertNull(resposta.recomendacaoPrincipal());
+  }
 
-    private RecomendacaoProximoPickRequest cenarioPrincipal(
-        LadoDraft meuLado,
-        int minhaOrdem
-    ) {
-        return new RecomendacaoProximoPickRequest(
-            meuLado,
-            minhaOrdem,
-            List.of(1L, 2L, 3L),
-            List.of(4L, 5L, 6L),
-            List.of(new PickSemFuncaoRequest(1, 8L)),
-            List.of(
-                new PickSemFuncaoRequest(1, 20L),
-                new PickSemFuncaoRequest(2, 17L)
-            ),
-            List.of(Rota.MID_LANE, Rota.JUNGLE)
-        );
-    }
+  private RecomendacaoProximoPickRequest cenarioPrincipal(LadoDraft meuLado, int minhaOrdem) {
+    return new RecomendacaoProximoPickRequest(
+        meuLado,
+        minhaOrdem,
+        List.of(1L, 2L, 3L),
+        List.of(4L, 5L, 6L),
+        List.of(new PickSemFuncaoRequest(1, 8L)),
+        List.of(new PickSemFuncaoRequest(1, 20L), new PickSemFuncaoRequest(2, 17L)),
+        List.of(Rota.MID_LANE, Rota.JUNGLE));
+  }
 
-    private void validarRecomendacao(RecomendacaoPickResponse recomendacao) {
-        assertTrue(recomendacao.pontuacaoFinal() >= 0);
-        assertTrue(recomendacao.pontuacaoFinal() <= 100);
-        assertTrue(recomendacao.mediaCenarios() >= recomendacao.piorCenario());
-        assertTrue(recomendacao.coberturaHipoteses() > 0);
-        assertFalse(recomendacao.rotasRecomendadas().isEmpty());
-        assertFalse(recomendacao.motivos().isEmpty());
-        assertFalse(recomendacao.riscos().isEmpty());
-    }
+  private void validarRecomendacao(RecomendacaoPickResponse recomendacao) {
+    assertTrue(recomendacao.pontuacaoFinal() >= 0);
+    assertTrue(recomendacao.pontuacaoFinal() <= 100);
+    assertTrue(recomendacao.mediaCenarios() >= recomendacao.piorCenario());
+    assertTrue(recomendacao.coberturaHipoteses() > 0);
+    assertFalse(recomendacao.rotasRecomendadas().isEmpty());
+    assertFalse(recomendacao.motivos().isEmpty());
+    assertFalse(recomendacao.riscos().isEmpty());
+  }
 }

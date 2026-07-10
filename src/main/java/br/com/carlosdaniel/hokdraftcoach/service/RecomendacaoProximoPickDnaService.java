@@ -29,27 +29,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class RecomendacaoProximoPickDnaService {
 
-    private static final int LIMITE_ALTERNATIVAS = 2;
+  private static final int LIMITE_ALTERNATIVAS = 2;
 
-    private final RecomendacaoProximoPickService recomendacaoBase;
-    private final HeroiService heroiService;
-    private final AnaliseAmeacaComposicaoService dnaComposicaoService;
-    private final SegurancaBlindPickService segurancaBlindPickService;
-    private final ProjecaoRespostaInimigaService projecaoService;
-    private final ExplicacaoRecomendacaoService explicacaoService;
+  private final RecomendacaoProximoPickService recomendacaoBase;
+  private final HeroiService heroiService;
+  private final AnaliseAmeacaComposicaoService dnaComposicaoService;
+  private final SegurancaBlindPickService segurancaBlindPickService;
+  private final ProjecaoRespostaInimigaService projecaoService;
+  private final ExplicacaoRecomendacaoService explicacaoService;
 
-    public RecomendacaoProximoPickDnaService(
-        RecomendacaoProximoPickService recomendacaoBase,
-        HeroiService heroiService,
-        AnaliseAmeacaComposicaoService dnaComposicaoService,
-        SegurancaBlindPickService segurancaBlindPickService,
-        ProjecaoRespostaInimigaService projecaoService,
-        ExplicacaoRecomendacaoService explicacaoService
-    ) {
-        this.recomendacaoBase = recomendacaoBase;
-        this.heroiService = heroiService;
-        this.dnaComposicaoService = dnaComposicaoService;
-        this.segurancaBlindPickService = segurancaBlindPickService;
+  public RecomendacaoProximoPickDnaService(
+      RecomendacaoProximoPickService recomendacaoBase,
+      HeroiService heroiService,
+      AnaliseAmeacaComposicaoService dnaComposicaoService,
+      SegurancaBlindPickService segurancaBlindPickService,
+      ProjecaoRespostaInimigaService projecaoService,
+      ExplicacaoRecomendacaoService explicacaoService) {
+    this.recomendacaoBase = recomendacaoBase;
+    this.heroiService = heroiService;
+    this.dnaComposicaoService = dnaComposicaoService;
+    this.segurancaBlindPickService = segurancaBlindPickService;
     this.projecaoService = projecaoService;
     this.explicacaoService = explicacaoService;
   }
@@ -141,120 +140,82 @@ public class RecomendacaoProximoPickDnaService {
         alternativas,
         opcoes,
         avisos.stream().distinct().toList());
-    }
+  }
 
-    private Map<Rota, Map<String, RecomendacaoDnaResponse>> carregarDnaPorRota(
-        List<RecomendacaoPickResponse> candidatas,
-        List<String> aliados,
-        List<String> inimigos
-    ) {
-        Map<Rota, Map<String, RecomendacaoDnaResponse>> resultado =
-            new EnumMap<>(Rota.class);
+  private Map<Rota, Map<String, RecomendacaoDnaResponse>> carregarDnaPorRota(
+      List<RecomendacaoPickResponse> candidatas, List<String> aliados, List<String> inimigos) {
+    Map<Rota, Map<String, RecomendacaoDnaResponse>> resultado = new EnumMap<>(Rota.class);
 
-        candidatas.stream()
-            .flatMap(candidata -> candidata.rotasRecomendadas().stream())
-            .distinct()
-            .forEach(rota -> {
-                Map<String, RecomendacaoDnaResponse> porHeroi =
-                    new LinkedHashMap<>();
-                dnaComposicaoService.recomendar(
-                    aliados,
-                    inimigos,
-                    rota,
-                    50
-                ).forEach(resposta -> porHeroi.put(resposta.heroi(), resposta));
-                resultado.put(rota, porHeroi);
+    candidatas.stream()
+        .flatMap(candidata -> candidata.rotasRecomendadas().stream())
+        .distinct()
+        .forEach(
+            rota -> {
+              Map<String, RecomendacaoDnaResponse> porHeroi = new LinkedHashMap<>();
+              dnaComposicaoService
+                  .recomendar(aliados, inimigos, rota, 50)
+                  .forEach(resposta -> porHeroi.put(resposta.heroi(), resposta));
+              resultado.put(rota, porHeroi);
             });
 
-        return resultado;
+    return resultado;
+  }
+
+  private CandidatoAvaliado ajustarBase(
+      RecomendacaoPickResponse base,
+      Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota,
+      RecomendacaoProximoPickRequest request) {
+    RecomendacaoDnaResponse dna = buscarDna(base, dnaPorRota);
+    Heroi candidato =
+        heroiService
+            .buscarPorNome(base.heroi())
+            .orElseThrow(
+                () -> new RegraNegocioException("Herói não encontrado: " + base.heroi() + "."));
+    AjusteBlindPickResponse blind =
+        segurancaBlindPickService.avaliar(request, candidato, base, dna);
+
+    int componenteDna =
+        dna == null ? 0 : limitar((int) Math.round((dna.pontuacao() - 50) / 3.0), -5, 15);
+    int ajusteTotal = componenteDna + blind.ajuste();
+    Map<String, Integer> componentes = new LinkedHashMap<>(base.componentes());
+    componentes.put("dnaComposicao", componenteDna);
+    componentes.put("ajusteOrdemDraft", blind.ajuste());
+    componentes.put("segurancaBlindScore", blind.perfil().segurancaBlind());
+    componentes.put("especificidadeDraft", blind.perfil().especificidade());
+    if (dna != null) {
+      componentes.put("curvaTemporal", dna.ajusteTemporal());
+      componentes.put("sinergiaGrupo", dna.bonusSinergiaGrupo());
+      componentes.put("antiSinergia", -dna.penalidadeAntiSinergia());
+      componentes.put("respostaAmeaca", dna.bonusRespostaAmeaca());
     }
 
-    private CandidatoAvaliado ajustarBase(
-        RecomendacaoPickResponse base,
-        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota,
-        RecomendacaoProximoPickRequest request
-    ) {
-        RecomendacaoDnaResponse dna = buscarDna(base, dnaPorRota);
-        Heroi candidato = heroiService.buscarPorNome(base.heroi())
-            .orElseThrow(() -> new RegraNegocioException(
-                "Herói não encontrado: " + base.heroi() + "."
-            ));
-        AjusteBlindPickResponse blind = segurancaBlindPickService.avaliar(
-            request,
-            candidato,
-            base,
-            dna
-        );
+    List<String> motivos = new ArrayList<>(base.motivos());
+    List<String> riscos = new ArrayList<>(base.riscos());
+    if (dna != null) {
+      if (!dna.corrige().isEmpty()) {
+        motivos.add("Corrige déficits do DNA: " + dna.corrige() + ".");
+      }
+      if (!dna.explora().isEmpty()) {
+        motivos.add("Explora o DNA inimigo: " + dna.explora() + ".");
+      }
+      if (!dna.alvosAmeacaRespondidos().isEmpty()) {
+        motivos.add("Neutraliza alvos estratégicos: " + dna.alvosAmeacaRespondidos() + ".");
+      }
+      motivos.addAll(dna.motivos().stream().limit(5).toList());
+      if (dna.pontuacao() < 45) {
+        riscos.add("Encaixe fraco com as prioridades atuais do DNA.");
+      }
+      riscos.addAll(dna.alertas().stream().limit(3).toList());
+    }
+    motivos.addAll(blind.motivos());
+    riscos.addAll(blind.riscos());
 
-        int componenteDna = dna == null
-            ? 0
-            : limitar(
-                (int) Math.round((dna.pontuacao() - 50) / 3.0),
-                -5,
-                15
-            );
-        int ajusteTotal = componenteDna + blind.ajuste();
-        Map<String, Integer> componentes = new LinkedHashMap<>(
-            base.componentes()
-        );
-        componentes.put("dnaComposicao", componenteDna);
-        componentes.put("ajusteOrdemDraft", blind.ajuste());
-        componentes.put(
-            "segurancaBlindScore",
-            blind.perfil().segurancaBlind()
-        );
-        componentes.put(
-            "especificidadeDraft",
-            blind.perfil().especificidade()
-        );
-        if (dna != null) {
-            componentes.put("curvaTemporal", dna.ajusteTemporal());
-            componentes.put("sinergiaGrupo", dna.bonusSinergiaGrupo());
-            componentes.put("antiSinergia", -dna.penalidadeAntiSinergia());
-            componentes.put("respostaAmeaca", dna.bonusRespostaAmeaca());
-        }
+    int pontuacaoFinal = limitar(base.pontuacaoFinal() + ajusteTotal, 0, 100);
+    int media = limitar(base.mediaCenarios() + ajusteTotal, 0, 100);
+    int pior = limitar(base.piorCenario() + ajusteTotal, 0, 100);
 
-        List<String> motivos = new ArrayList<>(base.motivos());
-        List<String> riscos = new ArrayList<>(base.riscos());
-        if (dna != null) {
-            if (!dna.corrige().isEmpty()) {
-                motivos.add("Corrige déficits do DNA: " + dna.corrige() + ".");
-            }
-            if (!dna.explora().isEmpty()) {
-                motivos.add("Explora o DNA inimigo: " + dna.explora() + ".");
-            }
-            if (!dna.alvosAmeacaRespondidos().isEmpty()) {
-                motivos.add(
-                    "Neutraliza alvos estratégicos: "
-                        + dna.alvosAmeacaRespondidos() + "."
-                );
-            }
-            motivos.addAll(dna.motivos().stream().limit(5).toList());
-            if (dna.pontuacao() < 45) {
-                riscos.add("Encaixe fraco com as prioridades atuais do DNA.");
-            }
-            riscos.addAll(dna.alertas().stream().limit(3).toList());
-        }
-        motivos.addAll(blind.motivos());
-        riscos.addAll(blind.riscos());
-
-        int pontuacaoFinal = limitar(
-            base.pontuacaoFinal() + ajusteTotal,
-            0,
-            100
-        );
-        int media = limitar(
-            base.mediaCenarios() + ajusteTotal,
-            0,
-            100
-        );
-        int pior = limitar(
-            base.piorCenario() + ajusteTotal,
-            0,
-            100
-        );
-
-        RecomendacaoPickResponse ajustada = new RecomendacaoPickResponse(
+    RecomendacaoPickResponse ajustada =
+        new RecomendacaoPickResponse(
             base.heroiId(),
             base.heroi(),
             base.rotasRecomendadas(),
@@ -269,243 +230,178 @@ public class RecomendacaoProximoPickDnaService {
             motivos.stream().distinct().limit(12).toList(),
             riscos.stream().distinct().limit(8).toList(),
             blind.perfil(),
-            base.dadosValidados()
-        );
-        return new CandidatoAvaliado(
-            ajustada,
-            dna,
-            ProjecaoPickResponse.vazia(
-                ajustada.heroi(),
-                ajustada.pontuacaoFinal()
-            )
-        );
+            base.dadosValidados());
+    return new CandidatoAvaliado(
+        ajustada, dna, ProjecaoPickResponse.vazia(ajustada.heroi(), ajustada.pontuacaoFinal()));
+  }
+
+  private CandidatoAvaliado projetar(
+      CandidatoAvaliado candidato,
+      RecomendacaoProximoPickRequest request,
+      List<String> aliados,
+      List<String> inimigos) {
+    ProjecaoPickResponse projecao =
+        projecaoService.projetar(request, aliados, inimigos, candidato.pick(), candidato.dna());
+    RecomendacaoPickResponse pick = aplicarProjecao(candidato.pick(), projecao);
+    return new CandidatoAvaliado(pick, candidato.dna(), projecao);
+  }
+
+  private RecomendacaoPickResponse aplicarProjecao(
+      RecomendacaoPickResponse base, ProjecaoPickResponse projecao) {
+    Map<String, Integer> componentes = new LinkedHashMap<>(base.componentes());
+    componentes.put("ajusteProjecao", projecao.ajusteProjecao());
+    componentes.put("robustezProjetada", projecao.robustez());
+    componentes.put("piorCenarioProjetado", projecao.piorCenarioProjetado());
+    List<String> motivos = new ArrayList<>(base.motivos());
+    List<String> riscos = new ArrayList<>(base.riscos());
+    if (projecao.ajusteProjecao() > 0) {
+      motivos.add(
+          "A escolha permanece robusta mesmo após as melhores respostas inimigas projetadas.");
     }
-
-    private CandidatoAvaliado projetar(
-        CandidatoAvaliado candidato,
-        RecomendacaoProximoPickRequest request,
-        List<String> aliados,
-        List<String> inimigos
-    ) {
-        ProjecaoPickResponse projecao = projecaoService.projetar(
-            request,
-            aliados,
-            inimigos,
-            candidato.pick(),
-            candidato.dna()
-        );
-        RecomendacaoPickResponse pick = aplicarProjecao(
-            candidato.pick(),
-            projecao
-        );
-        return new CandidatoAvaliado(pick, candidato.dna(), projecao);
+    if (!projecao.respostasProvaveis().isEmpty()) {
+      riscos.add(projecao.resumoPiorCenario());
     }
+    int pontuacao = limitar(base.pontuacaoFinal() + projecao.ajusteProjecao(), 0, 100);
+    int media = limitar(base.mediaCenarios() + projecao.ajusteProjecao(), 0, 100);
+    int pior =
+        Math.min(
+            limitar(base.piorCenario() + projecao.ajusteProjecao(), 0, 100),
+            projecao.piorCenarioProjetado());
+    return new RecomendacaoPickResponse(
+        base.heroiId(),
+        base.heroi(),
+        base.rotasRecomendadas(),
+        pontuacao,
+        media,
+        pior,
+        base.coberturaHipoteses(),
+        base.cenariosAvaliados(),
+        base.seguranca(),
+        base.dificuldade(),
+        Map.copyOf(componentes),
+        motivos.stream().distinct().limit(13).toList(),
+        riscos.stream().distinct().limit(9).toList(),
+        base.perfilBlindPick(),
+        base.dadosValidados());
+  }
 
-    private RecomendacaoPickResponse aplicarProjecao(
-        RecomendacaoPickResponse base,
-        ProjecaoPickResponse projecao
-    ) {
-        Map<String, Integer> componentes = new LinkedHashMap<>(
-            base.componentes()
-        );
-        componentes.put("ajusteProjecao", projecao.ajusteProjecao());
-        componentes.put("robustezProjetada", projecao.robustez());
-        componentes.put(
-            "piorCenarioProjetado",
-            projecao.piorCenarioProjetado()
-        );
-        List<String> motivos = new ArrayList<>(base.motivos());
-        List<String> riscos = new ArrayList<>(base.riscos());
-        if (projecao.ajusteProjecao() > 0) {
-            motivos.add(
-                "A escolha permanece robusta mesmo após as melhores respostas inimigas projetadas."
-            );
-        }
-        if (!projecao.respostasProvaveis().isEmpty()) {
-            riscos.add(projecao.resumoPiorCenario());
-        }
-        int pontuacao = limitar(
-            base.pontuacaoFinal() + projecao.ajusteProjecao(),
-            0,
-            100
-        );
-        int media = limitar(
-            base.mediaCenarios() + projecao.ajusteProjecao(),
-            0,
-            100
-        );
-        int pior = Math.min(
-            limitar(
-                base.piorCenario() + projecao.ajusteProjecao(),
-                0,
-                100
-            ),
-            projecao.piorCenarioProjetado()
-        );
-        return new RecomendacaoPickResponse(
-            base.heroiId(),
-            base.heroi(),
-            base.rotasRecomendadas(),
-            pontuacao,
-            media,
-            pior,
-            base.coberturaHipoteses(),
-            base.cenariosAvaliados(),
-            base.seguranca(),
-            base.dificuldade(),
-            Map.copyOf(componentes),
-            motivos.stream().distinct().limit(13).toList(),
-            riscos.stream().distinct().limit(9).toList(),
-            base.perfilBlindPick(),
-            base.dadosValidados()
-        );
+  private List<OpcaoPickResponse> selecionarOpcoes(
+      List<CandidatoAvaliado> candidatas, DiagnosticoComposicaoResponse diagnostico) {
+    if (candidatas.isEmpty()) {
+      return List.of();
     }
+    Set<String> usados = new HashSet<>();
+    CandidatoAvaliado geral = selecionar(candidatas, usados, this::pontuacaoGeral);
+    usados.add(geral.pick().heroi());
+    CandidatoAvaliado segura = selecionar(candidatas, usados, this::pontuacaoSegura);
+    usados.add(segura.pick().heroi());
+    CandidatoAvaliado impacto = selecionar(candidatas, usados, this::pontuacaoImpacto);
 
-    private List<OpcaoPickResponse> selecionarOpcoes(
-        List<CandidatoAvaliado> candidatas,
-        DiagnosticoComposicaoResponse diagnostico
-    ) {
-        if (candidatas.isEmpty()) {
-            return List.of();
-        }
-        Set<String> usados = new HashSet<>();
-        CandidatoAvaliado geral = selecionar(
-            candidatas,
-            usados,
-            this::pontuacaoGeral
-        );
-        usados.add(geral.pick().heroi());
-        CandidatoAvaliado segura = selecionar(
-            candidatas,
-            usados,
-            this::pontuacaoSegura
-        );
-        usados.add(segura.pick().heroi());
-        CandidatoAvaliado impacto = selecionar(
-            candidatas,
-            usados,
-            this::pontuacaoImpacto
-        );
+    return List.of(
+        criarOpcao(
+            TipoOpcaoPick.MELHOR_GERAL,
+            "Melhor escolha geral",
+            pontuacaoGeral(geral),
+            geral,
+            diagnostico),
+        criarOpcao(
+            TipoOpcaoPick.MAIS_SEGURA,
+            "Escolha mais segura",
+            pontuacaoSegura(segura),
+            segura,
+            diagnostico),
+        criarOpcao(
+            TipoOpcaoPick.MAIOR_IMPACTO,
+            "Escolha de maior impacto",
+            pontuacaoImpacto(impacto),
+            impacto,
+            diagnostico));
+  }
 
-        return List.of(
-            criarOpcao(
-                TipoOpcaoPick.MELHOR_GERAL,
-                "Melhor escolha geral",
-                pontuacaoGeral(geral),
-                geral,
-                diagnostico
-            ),
-            criarOpcao(
-                TipoOpcaoPick.MAIS_SEGURA,
-                "Escolha mais segura",
-                pontuacaoSegura(segura),
-                segura,
-                diagnostico
-            ),
-            criarOpcao(
-                TipoOpcaoPick.MAIOR_IMPACTO,
-                "Escolha de maior impacto",
-                pontuacaoImpacto(impacto),
-                impacto,
-                diagnostico
-            )
-        );
-    }
+  private CandidatoAvaliado selecionar(
+      List<CandidatoAvaliado> candidatas,
+      Set<String> usados,
+      java.util.function.ToIntFunction<CandidatoAvaliado> pontuador) {
+    return candidatas.stream()
+        .filter(candidato -> !usados.contains(candidato.pick().heroi()))
+        .max(Comparator.comparingInt(pontuador))
+        .orElseGet(() -> candidatas.stream().max(Comparator.comparingInt(pontuador)).orElseThrow());
+  }
 
-    private CandidatoAvaliado selecionar(
-        List<CandidatoAvaliado> candidatas,
-        Set<String> usados,
-        java.util.function.ToIntFunction<CandidatoAvaliado> pontuador
-    ) {
-        return candidatas.stream()
-            .filter(candidato -> !usados.contains(candidato.pick().heroi()))
-            .max(Comparator.comparingInt(pontuador))
-            .orElseGet(() -> candidatas.stream()
-                .max(Comparator.comparingInt(pontuador))
-                .orElseThrow());
-    }
+  private OpcaoPickResponse criarOpcao(
+      TipoOpcaoPick tipo,
+      String titulo,
+      int pontuacao,
+      CandidatoAvaliado candidato,
+      DiagnosticoComposicaoResponse diagnostico) {
+    ExplicacaoRecomendacaoResponse explicacao =
+        explicacaoService.explicar(
+            tipo, candidato.pick(), candidato.dna(), diagnostico, candidato.projecao());
+    return new OpcaoPickResponse(
+        tipo,
+        titulo,
+        limitar(pontuacao, 0, 100),
+        candidato.pick(),
+        candidato.projecao(),
+        explicacao);
+  }
 
-    private OpcaoPickResponse criarOpcao(
-        TipoOpcaoPick tipo,
-        String titulo,
-        int pontuacao,
-        CandidatoAvaliado candidato,
-        DiagnosticoComposicaoResponse diagnostico
-    ) {
-        ExplicacaoRecomendacaoResponse explicacao =
-            explicacaoService.explicar(
-                tipo,
-                candidato.pick(),
-                candidato.dna(),
-                diagnostico,
-                candidato.projecao()
-            );
-        return new OpcaoPickResponse(
-            tipo,
-            titulo,
-            limitar(pontuacao, 0, 100),
-            candidato.pick(),
-            candidato.projecao(),
-            explicacao
-        );
-    }
+  private int pontuacaoGeral(CandidatoAvaliado candidato) {
+    return limitar(
+        (int)
+            Math.round(
+                candidato.pick().pontuacaoFinal() * 0.55
+                    + candidato.projecao().robustez() * 0.25
+                    + candidato.projecao().piorCenarioProjetado() * 0.20),
+        0,
+        100);
+  }
 
-    private int pontuacaoGeral(CandidatoAvaliado candidato) {
-        return limitar((int) Math.round(
-            candidato.pick().pontuacaoFinal() * 0.55
-                + candidato.projecao().robustez() * 0.25
-                + candidato.projecao().piorCenarioProjetado() * 0.20
-        ), 0, 100);
-    }
-
-    private int pontuacaoSegura(CandidatoAvaliado candidato) {
-        int blind = candidato.pick().perfilBlindPick() == null
+  private int pontuacaoSegura(CandidatoAvaliado candidato) {
+    int blind =
+        candidato.pick().perfilBlindPick() == null
             ? candidato.pick().piorCenario()
             : candidato.pick().perfilBlindPick().segurancaBlind();
-        return limitar((int) Math.round(
-            blind * 0.35
-                + candidato.projecao().robustez() * 0.35
-                + candidato.pick().coberturaHipoteses() * 0.15
-                + candidato.projecao().piorCenarioProjetado() * 0.15
-        ), 0, 100);
-    }
+    return limitar(
+        (int)
+            Math.round(
+                blind * 0.35
+                    + candidato.projecao().robustez() * 0.35
+                    + candidato.pick().coberturaHipoteses() * 0.15
+                    + candidato.projecao().piorCenarioProjetado() * 0.15),
+        0,
+        100);
+  }
 
-    private int pontuacaoImpacto(CandidatoAvaliado candidato) {
-        int especificidade = candidato.pick().perfilBlindPick() == null
+  private int pontuacaoImpacto(CandidatoAvaliado candidato) {
+    int especificidade =
+        candidato.pick().perfilBlindPick() == null
             ? 50
             : candidato.pick().perfilBlindPick().especificidade();
-        int respostaAmeaca = candidato.dna() == null
-            ? 0
-            : Math.min(100, candidato.dna().bonusRespostaAmeaca() * 5);
-        int sinergia = candidato.dna() == null
-            ? 0
-            : Math.min(100, candidato.dna().bonusSinergiaGrupo() * 6);
-        int confronto = Math.min(
-            100,
-            Math.max(
-                0,
-                candidato.pick().componentes().getOrDefault("confronto", 0)
-            ) * 6
-        );
-        return limitar((int) Math.round(
-            candidato.pick().pontuacaoFinal() * 0.30
-                + especificidade * 0.25
-                + respostaAmeaca * 0.25
-                + Math.max(sinergia, confronto) * 0.20
-        ), 0, 100);
-    }
+    int respostaAmeaca =
+        candidato.dna() == null ? 0 : Math.min(100, candidato.dna().bonusRespostaAmeaca() * 5);
+    int sinergia =
+        candidato.dna() == null ? 0 : Math.min(100, candidato.dna().bonusSinergiaGrupo() * 6);
+    int confronto =
+        Math.min(100, Math.max(0, candidato.pick().componentes().getOrDefault("confronto", 0)) * 6);
+    return limitar(
+        (int)
+            Math.round(
+                candidato.pick().pontuacaoFinal() * 0.30
+                    + especificidade * 0.25
+                    + respostaAmeaca * 0.25
+                    + Math.max(sinergia, confronto) * 0.20),
+        0,
+        100);
+  }
 
-    private RecomendacaoDnaResponse buscarDna(
-        RecomendacaoPickResponse pick,
-        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota
-    ) {
-        return pick.rotasRecomendadas().stream()
-            .map(rota -> dnaPorRota
-                .getOrDefault(rota, Map.of())
-                .get(pick.heroi()))
-            .filter(resposta -> resposta != null)
-            .max(Comparator.comparingInt(RecomendacaoDnaResponse::pontuacao))
-            .orElse(null);
+  private RecomendacaoDnaResponse buscarDna(
+      RecomendacaoPickResponse pick, Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota) {
+    return pick.rotasRecomendadas().stream()
+        .map(rota -> dnaPorRota.getOrDefault(rota, Map.of()).get(pick.heroi()))
+        .filter(resposta -> resposta != null)
+        .max(Comparator.comparingInt(RecomendacaoDnaResponse::pontuacao))
+        .orElse(null);
   }
 
   private RecomendacaoProximoPickResponse anexarDiagnostico(
@@ -573,32 +469,25 @@ public class RecomendacaoProximoPickDnaService {
 
   private List<PickSemFuncaoRequest> picksInimigos(RecomendacaoProximoPickRequest request) {
     if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
-            return request.picksVermelho();
-        }
-        return request.picksAzul();
+      return request.picksVermelho();
     }
+    return request.picksAzul();
+  }
 
-    private List<String> nomes(List<PickSemFuncaoRequest> picks) {
-        return picks.stream()
-            .map(pick -> buscarHeroi(pick.heroiId()).getNome())
-            .toList();
-    }
+  private List<String> nomes(List<PickSemFuncaoRequest> picks) {
+    return picks.stream().map(pick -> buscarHeroi(pick.heroiId()).getNome()).toList();
+  }
 
-    private Heroi buscarHeroi(Long id) {
-        return heroiService.buscarPorId(id)
-            .orElseThrow(() -> new RegraNegocioException(
-                "Herói de ID " + id + " não encontrado."
-            ));
-    }
+  private Heroi buscarHeroi(Long id) {
+    return heroiService
+        .buscarPorId(id)
+        .orElseThrow(() -> new RegraNegocioException("Herói de ID " + id + " não encontrado."));
+  }
 
-    private int limitar(int valor, int minimo, int maximo) {
-        return Math.max(minimo, Math.min(maximo, valor));
-    }
+  private int limitar(int valor, int minimo, int maximo) {
+    return Math.max(minimo, Math.min(maximo, valor));
+  }
 
-    private record CandidatoAvaliado(
-        RecomendacaoPickResponse pick,
-        RecomendacaoDnaResponse dna,
-        ProjecaoPickResponse projecao
-    ) {
-    }
+  private record CandidatoAvaliado(
+      RecomendacaoPickResponse pick, RecomendacaoDnaResponse dna, ProjecaoPickResponse projecao) {}
 }

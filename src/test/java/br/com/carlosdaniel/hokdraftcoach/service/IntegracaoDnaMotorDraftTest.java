@@ -25,95 +25,70 @@ import org.junit.jupiter.api.Test;
 
 class IntegracaoDnaMotorDraftTest {
 
-    private HeroiService heroiService;
-    private DraftDnaService draftDnaService;
-    private RecomendacaoProximoPickDnaService proximoPickDnaService;
+  private HeroiService heroiService;
+  private DraftDnaService draftDnaService;
+  private RecomendacaoProximoPickDnaService proximoPickDnaService;
 
-    @BeforeEach
-    void configurar() {
-        heroiService = new HeroiServiceCompleto(
+  @BeforeEach
+  void configurar() {
+    heroiService =
+        new HeroiServiceCompleto(
             new CatalogoSuporteRepository(),
             new CatalogoMidRepository(),
             new CatalogoJungleRepository(),
-            new CatalogoClashRepository()
-        );
-        DnaHeroiService dnaHeroi = new DnaHeroiService();
-        EconomiaRecursosService economia = new EconomiaRecursosService();
-        PerfilTemporalService temporal = new PerfilTemporalService();
-        SinergiaGrupoService sinergias = new SinergiaGrupoService(
-            new SinergiaGrupoRepository(),
-            dnaHeroi
-        );
-        AntiSinergiaService antiSinergias = new AntiSinergiaService(
-            new AntiSinergiaRepository(),
-            dnaHeroi
-        );
-        AnaliseAmeacaService ameacas = new AnaliseAmeacaService(
-            dnaHeroi,
-            temporal,
-            economia
-        );
-        AnaliseAmeacaComposicaoService dnaService =
-            new AnaliseAmeacaComposicaoService(
-                heroiService,
-                dnaHeroi,
-                new CondicaoVitoriaService(dnaHeroi, economia),
-                economia,
-                new NecessidadePenalidadeService(dnaHeroi, economia),
-                temporal,
-                sinergias,
-                antiSinergias,
-                ameacas
-            );
-        DraftService draftService = new DraftService(heroiService);
-        draftDnaService = new DraftDnaService(
-            draftService,
+            new CatalogoClashRepository());
+    DnaHeroiService dnaHeroi = new DnaHeroiService();
+    EconomiaRecursosService economia = new EconomiaRecursosService();
+    PerfilTemporalService temporal = new PerfilTemporalService();
+    SinergiaGrupoService sinergias =
+        new SinergiaGrupoService(new SinergiaGrupoRepository(), dnaHeroi);
+    AntiSinergiaService antiSinergias =
+        new AntiSinergiaService(new AntiSinergiaRepository(), dnaHeroi);
+    AnaliseAmeacaService ameacas = new AnaliseAmeacaService(dnaHeroi, temporal, economia);
+    AnaliseAmeacaComposicaoService dnaService =
+        new AnaliseAmeacaComposicaoService(
             heroiService,
-            dnaService
-        );
+            dnaHeroi,
+            new CondicaoVitoriaService(dnaHeroi, economia),
+            economia,
+            new NecessidadePenalidadeService(dnaHeroi, economia),
+            temporal,
+            sinergias,
+            antiSinergias,
+            ameacas);
+    DraftService draftService = new DraftService(heroiService);
+    draftDnaService = new DraftDnaService(draftService, heroiService, dnaService);
 
-        InferenciaFuncoesService inferencia = new InferenciaFuncoesService(
-            heroiService
-        );
-        RecomendacaoProximoPickService base =
-            new RecomendacaoProximoPickService(heroiService, inferencia);
-        ProjecaoRespostaInimigaService projecao =
-            new ProjecaoRespostaInimigaService(
-                heroiService,
-                inferencia,
-                dnaService,
-                ameacas
-            );
-        proximoPickDnaService = new RecomendacaoProximoPickDnaService(
+    InferenciaFuncoesService inferencia = new InferenciaFuncoesService(heroiService);
+    RecomendacaoProximoPickService base =
+        new RecomendacaoProximoPickService(heroiService, inferencia);
+    ProjecaoRespostaInimigaService projecao =
+        new ProjecaoRespostaInimigaService(heroiService, inferencia, dnaService, ameacas);
+    proximoPickDnaService =
+        new RecomendacaoProximoPickDnaService(
             base,
             heroiService,
             dnaService,
             new SegurancaBlindPickService(),
             projecao,
-            new ExplicacaoRecomendacaoService()
-        );
-    }
+            new ExplicacaoRecomendacaoService());
+  }
 
-    @Test
-    void deveAnexarDiagnosticoEAjustarRecomendacaoPorRota() {
-        DraftRequest request = new DraftRequest(
+  @Test
+  void deveAnexarDiagnosticoEAjustarRecomendacaoPorRota() {
+    DraftRequest request =
+        new DraftRequest(
             Rota.ROAMING,
             List.of(
                 new EscolhaDraftRequest(Rota.FARM_LANE, 7L),
-                new EscolhaDraftRequest(Rota.MID_LANE, 14L)
-            ),
-            List.of(
-                new EscolhaDraftRequest(Rota.CLASH_LANE, 200L)
-            )
-        );
+                new EscolhaDraftRequest(Rota.MID_LANE, 14L)),
+            List.of(new EscolhaDraftRequest(Rota.CLASH_LANE, 200L)));
 
-        AnaliseDraftResponse resposta = draftDnaService.recomendar(request);
+    AnaliseDraftResponse resposta = draftDnaService.recomendar(request);
 
-        assertNotNull(resposta.diagnosticoComposicao());
-        assertTrue(resposta.diagnosticoComposicao().diagnosticoConcluido());
-        assertNotNull(
-            resposta.diagnosticoComposicao().curvaPoderNossaComposicao()
-        );
+    assertNotNull(resposta.diagnosticoComposicao());
+    assertTrue(resposta.diagnosticoComposicao().diagnosticoConcluido());
+    assertNotNull(resposta.diagnosticoComposicao().curvaPoderNossaComposicao());
     assertNotNull(resposta.diagnosticoComposicao().analiseAmeacasInimigas());
     assertTrue(
         resposta.recomendacoes().stream()
@@ -200,8 +175,6 @@ class IntegracaoDnaMotorDraftTest {
                         && opcao.explicacao() != null
                         && !opcao.explicacao().resumo().isBlank()));
     assertTrue(resposta.recomendacaoPrincipal().componentes().containsKey("ajusteProjecao"));
-        assertTrue(resposta.avisos().stream().anyMatch(
-            aviso -> aviso.contains("probabilidades")
-        ));
-    }
+    assertTrue(resposta.avisos().stream().anyMatch(aviso -> aviso.contains("probabilidades")));
+  }
 }
