@@ -130,7 +130,34 @@ class IntegracaoDnaMotorDraftTest {
     }
 
     @Test
-    void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {
+void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 2L, 3L),
+            List.of(1L, 4L, 5L),
+            List.of(),
+            List.of(),
+            List.of(Rota.ROAMING)
+        );
+
+    RecomendacaoProximoPickResponse resposta =
+        proximoPickDnaService.recomendar(request);
+
+    assertEquals("MINHA_VEZ", resposta.estadoDraft());
+    assertNotNull(resposta.recomendacaoPrincipal());
+    assertEquals(3, resposta.opcoesEstrategicas().size());
+    assertTrue(
+        resposta.opcoesEstrategicas().stream().allMatch(
+            opcao -> opcao.projecao() != null
+                && !opcao.projecao().respostasProvaveis().isEmpty()
+        )
+    );
+}
+
+@Test
+void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {
         RecomendacaoProximoPickRequest request =
             new RecomendacaoProximoPickRequest(
                 LadoDraft.AZUL,

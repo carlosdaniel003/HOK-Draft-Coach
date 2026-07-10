@@ -1,2 +1,0 @@
-Estado e mensagem da recomendação: esperado 1 bloco, encontrado 0
-status=1

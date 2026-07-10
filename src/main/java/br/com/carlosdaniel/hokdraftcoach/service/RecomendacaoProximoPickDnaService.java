@@ -74,7 +74,7 @@ DiagnosticoComposicaoResponse diagnostico = aliados.isEmpty()
 RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
     request
 );
-        if (diagnostico == null || base.recomendacaoPrincipal() == null) {
+        if (base.recomendacaoPrincipal() == null) {
             return anexarDiagnostico(base, diagnostico, contexto);
         }
 
@@ -83,7 +83,9 @@ RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
         candidatas.addAll(base.alternativas());
 
         Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =
-            carregarDnaPorRota(candidatas, aliados, inimigos);
+            aliados.isEmpty()
+                ? Map.of()
+                : carregarDnaPorRota(candidatas, aliados, inimigos);
 
         List<CandidatoAvaliado> avaliadas = candidatas.stream()
             .map(recomendacao -> ajustarBase(
