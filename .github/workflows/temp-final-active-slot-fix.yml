@@ -1,0 +1,97 @@
+name: Temporary final active slot fix
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-final-active-slot-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Apply reviewed correction
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          service_path = Path('src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java')
+          service = service_path.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r'\s*boolean ehMinhaVez = rodadaAtual\.lado\(\) == request\.meuLado\(\)\s*'
+              r'&& rodadaAtual\.ordens\(\)\.contains\(request\.minhaOrdem\(\)\);\s*'
+              r'boolean vezAliada = rodadaAtual\.lado\(\) == request\.meuLado\(\);'
+          )
+          service, count = pattern.subn(
+              '\n        boolean vezAliada = rodadaAtual.lado() == request.meuLado();\n'
+              '        boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;',
+              service,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'Correção do slot ativo: encontrado {count}')
+          service_path.write_text(service, encoding='utf-8')
+
+          test_path = Path('src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java')
+          test = test_path.read_text(encoding='utf-8')
+          test, count = re.subn(
+              r'void deveRecomendarHeroiQuandoForMinhaVez\(\)',
+              'void devePriorizarPrimeiroSlotAliadoAbertoNaRodadaDupla()',
+              test,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'Renome do teste: encontrado {count}')
+
+          assertions = re.compile(
+              r'\s*assertEquals\("MINHA_VEZ", resposta\.estadoDraft\(\)\);\s*'
+              r'assertTrue\(resposta\.ehMinhaVez\(\)\);\s*'
+              r'assertEquals\("B3", resposta\.meuSlot\(\)\);'
+          )
+          test, count = assertions.subn(
+              '\n        assertEquals("VEZ_ALIADA", resposta.estadoDraft());\n'
+              '        assertFalse(resposta.ehMinhaVez());\n'
+              '        assertEquals("B3", resposta.meuSlot());\n'
+              '        assertTrue(resposta.mensagem().contains("B2"));',
+              test,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'Asserções da rodada dupla: encontrado {count}')
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Run Maven tests
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Publish final correction
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm \
+            .github/workflows/temp-final-active-slot-fix.yml \
+            .github/workflows/temp-fix-active-allied-slot.yml \
+            .github/workflows/temp-refine-live-draft.yml
+          git add \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java
+          git commit -m "fix: align allied recommendation with active slot"
+          git push origin HEAD:feat/backend-draft-engine
