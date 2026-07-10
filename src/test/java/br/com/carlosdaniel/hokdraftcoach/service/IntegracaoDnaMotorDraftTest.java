@@ -127,7 +127,9 @@ class IntegracaoDnaMotorDraftTest {
                     && recomendacao.componentes().containsKey("antiSinergia")
                     && recomendacao.componentes().containsKey("respostaAmeaca")
         ));
-    }    @Test
+    }
+
+    @Test
     void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {
         RecomendacaoProximoPickRequest request =
             new RecomendacaoProximoPickRequest(

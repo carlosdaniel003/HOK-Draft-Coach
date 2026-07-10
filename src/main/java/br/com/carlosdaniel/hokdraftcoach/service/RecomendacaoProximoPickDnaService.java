@@ -58,7 +58,8 @@ public class RecomendacaoProximoPickDnaService {
 
     public RecomendacaoProximoPickResponse recomendar(
         RecomendacaoProximoPickRequest request
-    ) {        RecomendacaoProximoPickRequest requestAlvo =
+    ) {
+        RecomendacaoProximoPickRequest requestAlvo =
             requestParaProximoAliado(request);
         List<String> aliados = nomes(picksAliados(request));
         List<String> inimigos = nomes(picksInimigos(request));
@@ -123,7 +124,9 @@ public class RecomendacaoProximoPickDnaService {
             .map(OpcaoPickResponse::escolha)
             .distinct()
             .limit(LIMITE_ALTERNATIVAS)
-            .toList();        String mensagem = switch (base.estadoDraft()) {
+            .toList();
+
+        String mensagem = switch (base.estadoDraft()) {
             case "MINHA_VEZ" ->
                 "É sua vez. A melhor escolha geral é "
                     + principal.heroi()
@@ -555,7 +558,9 @@ public class RecomendacaoProximoPickDnaService {
             List.of(),
             base.avisos()
         );
-    }    private RecomendacaoProximoPickRequest requestParaProximoAliado(
+    }
+
+    private RecomendacaoProximoPickRequest requestParaProximoAliado(
         RecomendacaoProximoPickRequest request
     ) {
         if (request.meuLado() == null) {

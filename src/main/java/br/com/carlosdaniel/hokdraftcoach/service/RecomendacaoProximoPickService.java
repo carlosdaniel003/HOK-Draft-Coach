@@ -139,7 +139,9 @@ public class RecomendacaoProximoPickService {
                 List.of(),
                 List.of()
             );
-        }        Integer ordemAlvoAliada = proximaOrdemAliada(request);
+        }
+
+        Integer ordemAlvoAliada = proximaOrdemAliada(request);
         if (ordemAlvoAliada == null) {
             return semRecomendacao(
                 "EQUIPE_ALIADA_COMPLETA",
@@ -231,7 +233,9 @@ public class RecomendacaoProximoPickService {
             .stream()
             .skip(1)
             .limit(LIMITE_ALTERNATIVAS)
-            .toList();        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+            .toList();
+
+        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
         boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
         String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
         String estadoDraft = ehMinhaVez
@@ -897,7 +901,9 @@ public class RecomendacaoProximoPickService {
         }
 
         return null;
-    }    private Integer proximaOrdemAliada(
+    }
+
+    private Integer proximaOrdemAliada(
         RecomendacaoProximoPickRequest request
     ) {
         Map<Integer, Long> preenchidos = mapaPicks(
