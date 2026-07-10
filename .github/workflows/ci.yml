@@ -36,7 +36,13 @@ jobs:
 
       - name: Aplicar otimização temporária
         if: github.head_ref == 'feat/backend-draft-engine' || github.ref_name == 'feat/backend-draft-engine'
-        run: python3 .github/scripts/optimize_analysis.py
+        shell: bash
+        run: |
+          if grep -q 'S15-HOK-PLUS-2.0' src/main/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiService.java; then
+            python3 .github/scripts/optimize_analysis.py
+          else
+            echo "Otimização já aplicada no código."
+          fi
 
       - name: Compilar e executar testes
         shell: bash
@@ -112,9 +118,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show HEAD^:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f .github/workflows/temp-optimize-analysis.yml
-          rm -f .github/scripts/optimize_analysis.py
-          git add -A
+          git add \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiService.java \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesService.java \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaComposicaoService.java \
+            src/main/resources/static/js/next-pick.js \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiServiceTest.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesServiceTest.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickPorFuncaoServiceTest.java
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração de código pendente."
+            exit 0
+          fi
+
           git commit -m "perf: speed up draft analysis and correct Chicha roles"
           git push origin HEAD:feat/backend-draft-engine
