@@ -82,3 +82,5 @@ jobs:
             src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
           git commit -m "style: preserve project formatting in live draft changes"
           git push origin HEAD:feat/backend-draft-engine
+
+# trigger: 1
