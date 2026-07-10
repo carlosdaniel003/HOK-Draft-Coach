@@ -1,0 +1,2 @@
+Teste contínuo do aliado: esperado 1 bloco, encontrado 0
+status=1
