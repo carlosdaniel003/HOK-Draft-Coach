@@ -44,10 +44,10 @@ jobs:
               for line in lines
           ) + '\n'
 
-          old_pattern = """              r'        String mensagem = switch '
-              r'\\(base\\.estadoDraft\\(\\)\\) \\{.*?        \\};',"""
-          new_pattern = """              r'\\s*String mensagem = switch '
-              r'\\(base\\.estadoDraft\\(\\)\\) \\{.*?\\n\\s*\\};',"""
+          old_pattern = """    r'        String mensagem = switch '
+    r'\\(base\\.estadoDraft\\(\\)\\) \\{.*?        \\};',"""
+          new_pattern = """    r'\\s*String mensagem = switch '
+    r'\\(base\\.estadoDraft\\(\\)\\) \\{.*?\\n\\s*\\};',"""
           if script.count(old_pattern) != 1:
               raise SystemExit('Padrão antigo do switch não encontrado')
           script = script.replace(old_pattern, new_pattern, 1)
@@ -90,4 +90,4 @@ jobs:
           git commit -m "style: preserve project formatting in live draft changes"
           git push origin HEAD:feat/backend-draft-engine
 
-# trigger: 1
+# trigger: 2
