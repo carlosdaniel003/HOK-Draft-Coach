@@ -1,0 +1,9 @@
+service_slot=1
+service_insert=1
+service_funcoes=1
+service_state=1
+service_helper=0
+dna_start=1
+dna_adjust=1
+dna_message=1
+dna_helper=0
