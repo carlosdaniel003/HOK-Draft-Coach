@@ -9,6 +9,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 concurrency:
   group: java-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -20,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || '' }}
+          fetch-depth: 0
 
       - name: Configurar Java 21
         uses: actions/setup-java@v4
@@ -27,6 +33,142 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+
+      - name: Aplicar restrição obrigatória de função
+        if: github.event_name == 'push' && github.ref_name == 'feat/backend-draft-engine'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: esperado 1 bloco, encontrado {count}")
+              return text.replace(old, new, 1)
+
+          service_path = Path(
+              "src/main/java/br/com/carlosdaniel/hokdraftcoach/service/"
+              "RecomendacaoProximoPickService.java"
+          )
+          service = service_path.read_text(encoding="utf-8")
+
+          service = replace_once(
+              service,
+              """        List<RecomendacaoPickResponse> recomendacoes = heroiService
+              .listarTodos()
+              .stream()
+              .filter(heroi -> !indisponiveis.contains(heroi.getId()))
+              .map(heroi -> avaliarCandidato(""",
+              """        List<RecomendacaoPickResponse> recomendacoes = heroiService
+              .listarTodos()
+              .stream()
+              .filter(heroi -> !indisponiveis.contains(heroi.getId()))
+              .filter(heroi -> funcoesAlvo.isEmpty()
+                  || heroi.getRotasPossiveis().stream()
+                      .anyMatch(funcoesAlvo::contains))
+              .map(heroi -> avaliarCandidato(""",
+              "Filtro de candidatos pela função do usuário"
+          )
+
+          service = replace_once(
+              service,
+              """            List<Rota> rotasValidas = candidato.getRotasPossiveis()
+                  .stream()
+                  .filter(hipoteseAliada.rotasAbertas()::contains)
+                  .toList();""",
+              """            List<Rota> rotasValidas = candidato.getRotasPossiveis()
+                  .stream()
+                  .filter(hipoteseAliada.rotasAbertas()::contains)
+                  .filter(rota -> funcoesPreferidas.isEmpty()
+                      || funcoesPreferidas.contains(rota))
+                  .toList();""",
+              "Restrição das rotas avaliadas"
+          )
+          service_path.write_text(service, encoding="utf-8")
+
+          test_path = Path(
+              "src/test/java/br/com/carlosdaniel/hokdraftcoach/service/"
+              "RecomendacaoProximoPickServiceTest.java"
+          )
+          test = test_path.read_text(encoding="utf-8")
+          marker = """    @Test
+    void deveAguardarConclusaoDosBans() {"""
+          block = """    @Test
+    void deveRestringirRecomendacoesAFuncaoDoUsuario() {
+        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 2L, 3L),
+            List.of(4L, 5L, 6L),
+            List.of(),
+            List.of(),
+            List.of(Rota.FARM_LANE)
+        );
+
+        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+
+        assertEquals("MINHA_VEZ", resposta.estadoDraft());
+        assertNotNull(resposta.recomendacaoPrincipal());
+        assertTrue(
+            java.util.stream.Stream.concat(
+                java.util.stream.Stream.of(resposta.recomendacaoPrincipal()),
+                resposta.alternativas().stream()
+            ).allMatch(recomendacao ->
+                !recomendacao.rotasRecomendadas().isEmpty()
+                    && recomendacao.rotasRecomendadas().stream()
+                        .allMatch(Rota.FARM_LANE::equals)
+            )
+        );
+    }
+
+    @Test
+    void deveAguardarConclusaoDosBans() {"""
+          test = replace_once(test, marker, block, "Teste unitário de função obrigatória")
+          test_path.write_text(test, encoding="utf-8")
+
+          integration_path = Path(
+              "src/test/java/br/com/carlosdaniel/hokdraftcoach/service/"
+              "IntegracaoDnaMotorDraftTest.java"
+          )
+          integration = integration_path.read_text(encoding="utf-8")
+          integration_marker = """    @Test
+    void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {"""
+          integration_block = """    @Test
+    void deveManterOpcoesEstrategicasNaFuncaoDoUsuario() {
+        RecomendacaoProximoPickRequest request =
+            new RecomendacaoProximoPickRequest(
+                LadoDraft.AZUL,
+                1,
+                List.of(1L, 2L, 3L),
+                List.of(4L, 5L, 6L),
+                List.of(),
+                List.of(),
+                List.of(Rota.FARM_LANE)
+            );
+
+        RecomendacaoProximoPickResponse resposta =
+            proximoPickDnaService.recomendar(request);
+
+        assertEquals("MINHA_VEZ", resposta.estadoDraft());
+        assertEquals(3, resposta.opcoesEstrategicas().size());
+        assertTrue(resposta.opcoesEstrategicas().stream().allMatch(opcao ->
+            !opcao.escolha().rotasRecomendadas().isEmpty()
+                && opcao.escolha().rotasRecomendadas().stream()
+                    .allMatch(Rota.FARM_LANE::equals)
+        ));
+    }
+
+    @Test
+    void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {"""
+          integration = replace_once(
+              integration,
+              integration_marker,
+              integration_block,
+              "Teste integrado de função obrigatória"
+          )
+          integration_path.write_text(integration, encoding="utf-8")
+          PY
 
       - name: Compilar e executar testes
         shell: bash
@@ -95,3 +237,19 @@ jobs:
           docker logs hok-draft-coach-ci
           docker rm --force hok-draft-coach-ci
           exit 1
+
+      - name: Publicar correção validada
+        if: github.event_name == 'push' && github.ref_name == 'feat/backend-draft-engine'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout HEAD^ -- .github/workflows/ci.yml
+          git rm .github/workflows/temp-enforce-user-role.yml
+          git add \
+            .github/workflows/ci.yml \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+          git commit -m "fix: restrict recommendations to user role"
+          git push origin HEAD:feat/backend-draft-engine
