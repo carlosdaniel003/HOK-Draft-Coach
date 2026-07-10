@@ -185,3 +185,5 @@ jobs:
             src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
           git commit -m "fix: restrict recommendations to user role"
           git push origin HEAD:feat/backend-draft-engine
+
+# trigger: 1
