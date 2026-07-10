@@ -1,0 +1,116 @@
+name: Temporary enable first-pick projection
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-enable-first-pick-projection.yml
+
+permissions:
+  contents: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Enable projections before composition diagnosis
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          dna_path = Path('src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java')
+          dna = dna_path.read_text(encoding='utf-8')
+
+          old_condition = '        if (diagnostico == null || base.recomendacaoPrincipal() == null) {'
+          new_condition = '        if (base.recomendacaoPrincipal() == null) {'
+          if dna.count(old_condition) != 1:
+              raise SystemExit('Condição de interrupção não encontrada exatamente uma vez')
+          dna = dna.replace(old_condition, new_condition, 1)
+
+          map_pattern = re.compile(
+              r'        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =\s*'
+              r'carregarDnaPorRota\(candidatas, aliados, inimigos\);'
+          )
+          dna, count = map_pattern.subn(
+              '        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =\n'
+              '            aliados.isEmpty()\n'
+              '                ? Map.of()\n'
+              '                : carregarDnaPorRota(candidatas, aliados, inimigos);',
+              dna,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'Mapa DNA opcional: encontrado {count}')
+          dna_path.write_text(dna, encoding='utf-8')
+
+          test_path = Path('src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java')
+          test = test_path.read_text(encoding='utf-8')
+          marker_pattern = re.compile(
+              r'    @Test\n    void deveManterDnaEProjecoesDepoisDoPickDoUsuario\(\) \{'
+          )
+          new_test = '''    @Test
+          void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {
+              RecomendacaoProximoPickRequest request =
+                  new RecomendacaoProximoPickRequest(
+                      LadoDraft.AZUL,
+                      1,
+                      List.of(1L, 2L, 3L),
+                      List.of(1L, 4L, 5L),
+                      List.of(),
+                      List.of(),
+                      List.of(Rota.ROAMING)
+                  );
+
+              RecomendacaoProximoPickResponse resposta =
+                  proximoPickDnaService.recomendar(request);
+
+              assertEquals("MINHA_VEZ", resposta.estadoDraft());
+              assertNotNull(resposta.recomendacaoPrincipal());
+              assertEquals(3, resposta.opcoesEstrategicas().size());
+              assertTrue(
+                  resposta.opcoesEstrategicas().stream().allMatch(
+                      opcao -> opcao.projecao() != null
+                          && !opcao.projecao().respostasProvaveis().isEmpty()
+                  )
+              );
+          }
+
+          @Test
+          void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {'''
+          test, count = marker_pattern.subn(new_test, test, count=1)
+          if count != 1:
+              raise SystemExit(f'Marcador do teste integrado: encontrado {count}')
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Run Maven tests
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Publish first-pick projections
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm \
+            .github/workflows/temp-enable-first-pick-projection.yml \
+            .github/workflows/temp-complete-projection-flow.yml \
+            complete-projection-output.txt
+          git add \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+          git commit -m "fix: project enemy responses from the first pick"
+          git push origin HEAD:feat/backend-draft-engine
