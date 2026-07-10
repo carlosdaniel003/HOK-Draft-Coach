@@ -38,14 +38,14 @@ class RecomendacaoProximoPickServiceTest {
     }
 
     @Test
-    void deveRecomendarHeroiQuandoForMinhaVez() {
+    void devePriorizarPrimeiroSlotAliadoAbertoNaRodadaDupla() {
         RecomendacaoProximoPickResponse resposta = service.recomendar(
             cenarioPrincipal(LadoDraft.AZUL, 3)
         );
-
-        assertEquals("MINHA_VEZ", resposta.estadoDraft());
-        assertTrue(resposta.ehMinhaVez());
+        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+        assertFalse(resposta.ehMinhaVez());
         assertEquals("B3", resposta.meuSlot());
+        assertTrue(resposta.mensagem().contains("B2"));
         assertEquals(LadoDraft.AZUL, resposta.proximoLado());
         assertTrue(resposta.proximosSlots().contains("B3"));
         assertNotNull(resposta.recomendacaoPrincipal());

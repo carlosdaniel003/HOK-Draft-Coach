@@ -232,9 +232,8 @@ List<Rota> funcoesAlvo = recomendacaoParaUsuario
             .skip(1)
             .limit(LIMITE_ALTERNATIVAS)
             .toList();
-        boolean ehMinhaVez = rodadaAtual.lado() == request.meuLado()
-    && rodadaAtual.ordens().contains(request.minhaOrdem());
-boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+        boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
 String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
 String estadoDraft = ehMinhaVez
     ? "MINHA_VEZ"
