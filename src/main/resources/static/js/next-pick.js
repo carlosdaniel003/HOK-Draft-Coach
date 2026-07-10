@@ -12,6 +12,8 @@ let temporizadorProximoPick = null;
 let versaoConsultaProximoPick = 0;
 let resultadoAtualProximoPick = null;
 let abaAnaliseAtual = "now";
+let controladorConsultaProximoPick = null;
+let assinaturaUltimaConsultaProximoPick = null;
 
 document.addEventListener("DOMContentLoaded", iniciarMotorProximoPick);
 
@@ -74,12 +76,24 @@ function agendarConsultaProximoPick() {
     clearTimeout(temporizadorProximoPick);
     temporizadorProximoPick = setTimeout(
         consultarRecomendacaoProximoPick,
-        180
+        90
     );
 }
 
 async function consultarRecomendacaoProximoPick() {
+    const request = montarRequestProximoPick();
+    const assinatura = JSON.stringify(request);
+
+    if (
+        assinatura === assinaturaUltimaConsultaProximoPick
+            && resultadoAtualProximoPick
+    ) {
+        return;
+    }
+
     const versaoAtual = ++versaoConsultaProximoPick;
+    controladorConsultaProximoPick?.abort();
+    controladorConsultaProximoPick = new AbortController();
     renderizarCarregamentoProximoPick();
 
     try {
@@ -90,7 +104,8 @@ async function consultarRecomendacaoProximoPick() {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(montarRequestProximoPick())
+                body: assinatura,
+                signal: controladorConsultaProximoPick.signal
             }
         );
 
@@ -104,9 +119,13 @@ async function consultarRecomendacaoProximoPick() {
             return;
         }
 
+        assinaturaUltimaConsultaProximoPick = assinatura;
         resultadoAtualProximoPick = resultado;
         renderizarRecomendacaoProximoPick(resultado);
     } catch (erro) {
+        if (erro.name === "AbortError") {
+            return;
+        }
         if (versaoAtual !== versaoConsultaProximoPick) {
             return;
         }

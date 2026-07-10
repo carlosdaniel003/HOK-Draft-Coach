@@ -17,8 +17,8 @@ import br.com.carlosdaniel.hokdraftcoach.model.TipoDano;
 @Service
 public class HeroiService {
 
-    private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.0";
-    private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 2);
+    private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.1";
+    private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 10);
     private static final String FONTE_META_FARM = "HOKSTATS_TIER_LIST";
 
     private final List<Heroi> herois = List.of(
@@ -165,18 +165,18 @@ public class HeroiService {
             TierMeta.B,
             "flex", "artilharia", "iniciação", "limpeza", "fim de jogo"
         ),
-        criarHeroiFarm(
+        criarHeroiFlex(
             25L,
             "Chicha",
             List.of(),
             ClasseHeroi.LUTADOR,
-            List.of(Rota.CLASH_LANE, Rota.JUNGLE, Rota.FARM_LANE),
-            "Lutadora flex de velocidade de ataque e limpeza",
+            Rota.JUNGLE,
+            List.of(Rota.JUNGLE, Rota.CLASH_LANE),
+            "Lutadora de selva com velocidade de ataque, limpeza e duelo",
             1,
             TipoDano.FISICO,
             new AtributosHeroi(4, 6, 7, 4, 9, 6),
-            TierMeta.A,
-            "flex", "velocidade de ataque", "limpeza", "duelo", "lutadora"
+            "flex", "jungle", "velocidade de ataque", "limpeza", "duelo", "lutadora"
         ),
         criarHeroiFarm(
             26L,

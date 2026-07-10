@@ -3,6 +3,7 @@ package br.com.carlosdaniel.hokdraftcoach.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -100,6 +101,19 @@ class InferenciaFuncoesServiceTest {
                 .getFirst()
                 .slot()
         );
+    }
+
+    @Test
+    void deveReutilizarInferenciaQuandoODraftNaoMudou() {
+        InferenciaFuncoesRequest request = request(
+            List.of(20L, 14L),
+            List.of(17L)
+        );
+
+        InferenciaFuncoesResponse primeira = service.inferir(request);
+        InferenciaFuncoesResponse segunda = service.inferir(request);
+
+        assertSame(primeira, segunda);
     }
 
     @Test

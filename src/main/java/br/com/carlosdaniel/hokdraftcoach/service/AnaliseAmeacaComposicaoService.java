@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.stereotype.Service;
 
@@ -29,8 +31,14 @@ import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 public class AnaliseAmeacaComposicaoService
     extends AnaliseTemporalSinergiaService {
 
+    private static final int LIMITE_CACHE_ANALISE = 256;
+
     private final HeroiService heroiService;
     private final AnaliseAmeacaService analiseAmeacaService;
+    private final ConcurrentMap<ChaveDiagnostico, DiagnosticoComposicaoResponse> cacheDiagnosticos =
+        new ConcurrentHashMap<>();
+    private final ConcurrentMap<ChaveRecomendacao, List<RecomendacaoDnaResponse>> cacheRecomendacoes =
+        new ConcurrentHashMap<>();
 
     public AnaliseAmeacaComposicaoService(
         HeroiService heroiService,
@@ -59,6 +67,26 @@ public class AnaliseAmeacaComposicaoService
 
     @Override
     public DiagnosticoComposicaoResponse diagnosticar(
+        List<String> aliados,
+        List<String> inimigos
+    ) {
+        ChaveDiagnostico chave = new ChaveDiagnostico(
+            copiarNomes(aliados),
+            copiarNomes(inimigos)
+        );
+        if (
+            cacheDiagnosticos.size() >= LIMITE_CACHE_ANALISE
+                && !cacheDiagnosticos.containsKey(chave)
+        ) {
+            cacheDiagnosticos.clear();
+        }
+        return cacheDiagnosticos.computeIfAbsent(
+            chave,
+            ignorada -> calcularDiagnostico(aliados, inimigos)
+        );
+    }
+
+    private DiagnosticoComposicaoResponse calcularDiagnostico(
         List<String> aliados,
         List<String> inimigos
     ) {
@@ -104,6 +132,30 @@ public class AnaliseAmeacaComposicaoService
 
     @Override
     public List<RecomendacaoDnaResponse> recomendar(
+        List<String> aliados,
+        List<String> inimigos,
+        Rota rota,
+        int limite
+    ) {
+        ChaveRecomendacao chave = new ChaveRecomendacao(
+            copiarNomes(aliados),
+            copiarNomes(inimigos),
+            rota,
+            limite
+        );
+        if (
+            cacheRecomendacoes.size() >= LIMITE_CACHE_ANALISE
+                && !cacheRecomendacoes.containsKey(chave)
+        ) {
+            cacheRecomendacoes.clear();
+        }
+        return cacheRecomendacoes.computeIfAbsent(
+            chave,
+            ignorada -> calcularRecomendacao(aliados, inimigos, rota, limite)
+        );
+    }
+
+    private List<RecomendacaoDnaResponse> calcularRecomendacao(
         List<String> aliados,
         List<String> inimigos,
         Rota rota,
@@ -577,6 +629,24 @@ public class AnaliseAmeacaComposicaoService
             );
         }
         return equipe;
+    }
+
+    private List<String> copiarNomes(List<String> nomes) {
+        return nomes == null ? List.of() : List.copyOf(nomes);
+    }
+
+    private record ChaveDiagnostico(
+        List<String> aliados,
+        List<String> inimigos
+    ) {
+    }
+
+    private record ChaveRecomendacao(
+        List<String> aliados,
+        List<String> inimigos,
+        Rota rota,
+        int limite
+    ) {
     }
 
     private String normalizar(String valor) {

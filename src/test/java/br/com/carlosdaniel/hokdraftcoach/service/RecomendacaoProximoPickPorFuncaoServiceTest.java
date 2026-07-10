@@ -2,6 +2,7 @@ package br.com.carlosdaniel.hokdraftcoach.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -49,6 +50,10 @@ class RecomendacaoProximoPickPorFuncaoServiceTest {
 
         assertEquals("MINHA_VEZ", resposta.estadoDraft());
         assertNotNull(resposta.recomendacaoPrincipal());
+        assertNotEquals("Chicha", resposta.recomendacaoPrincipal().heroi());
+        assertTrue(resposta.alternativas().stream().noneMatch(
+            recomendacao -> recomendacao.heroi().equals("Chicha")
+        ));
 
         Stream<RecomendacaoPickResponse> recomendacoes = Stream.concat(
             Stream.of(resposta.recomendacaoPrincipal()),

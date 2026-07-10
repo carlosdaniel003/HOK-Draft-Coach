@@ -9,6 +9,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.stereotype.Service;
 
@@ -30,14 +32,36 @@ public class InferenciaFuncoesService {
     private static final int LIMITE_HIPOTESES_RETORNADAS = 10;
     private static final int PONTOS_ROTA_PRINCIPAL = 20;
     private static final int PONTOS_ROTA_SECUNDARIA = 12;
+    private static final int LIMITE_CACHE_INFERENCIA = 128;
 
     private final HeroiService heroiService;
+    private final ConcurrentMap<ChaveInferencia, InferenciaFuncoesResponse> cacheInferencias =
+        new ConcurrentHashMap<>();
 
     public InferenciaFuncoesService(HeroiService heroiService) {
         this.heroiService = heroiService;
     }
 
     public InferenciaFuncoesResponse inferir(
+        InferenciaFuncoesRequest request
+    ) {
+        ChaveInferencia chave = new ChaveInferencia(
+            List.copyOf(request.picksAzul()),
+            List.copyOf(request.picksVermelho())
+        );
+        if (
+            cacheInferencias.size() >= LIMITE_CACHE_INFERENCIA
+                && !cacheInferencias.containsKey(chave)
+        ) {
+            cacheInferencias.clear();
+        }
+        return cacheInferencias.computeIfAbsent(
+            chave,
+            ignorada -> calcularInferencia(request)
+        );
+    }
+
+    private InferenciaFuncoesResponse calcularInferencia(
         InferenciaFuncoesRequest request
     ) {
         List<PickInterno> picksAzul = carregarPicks(
@@ -444,6 +468,12 @@ public class InferenciaFuncoesService {
                     + " foi selecionado mais de uma vez."
             );
         }
+    }
+
+    private record ChaveInferencia(
+        List<PickSemFuncaoRequest> picksAzul,
+        List<PickSemFuncaoRequest> picksVermelho
+    ) {
     }
 
     private record PickInterno(
