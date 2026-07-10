@@ -1,0 +1,150 @@
+name: Temporary finalize live draft synchronization
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-finalize-live-draft.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Prepare corrected patch script
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          workflow = Path('.github/workflows/temp-apply-live-draft-v2.yml').read_text(encoding='utf-8')
+          start = workflow.index("          python3 - <<'PY'\n") + len("          python3 - <<'PY'\n")
+          end = workflow.index("          PY\n", start)
+          lines = workflow[start:end].splitlines()
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+
+          base_replacement = '''base_test = sub_once(
+              base_test,
+              r'    @Test\\n    void deveAguardarConclusaoDosBans\\(\\) \\{',
+              ''' + "'''" + '''    @Test
+              void deveContinuarRecomendandoParaAliadoDepoisDoMeuPick() {
+                  RecomendacaoProximoPickResponse resposta = service.recomendar(
+                      cenarioPrincipal(LadoDraft.AZUL, 1)
+                  );
+
+                  assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+                  assertFalse(resposta.ehMinhaVez());
+                  assertNotNull(resposta.recomendacaoPrincipal());
+                  assertTrue(resposta.mensagem().contains("B2"));
+              }
+
+              @Test
+              void deveAguardarConclusaoDosBans() {''' + "'''" + ''',
+              'Teste contínuo do aliado',
+          )
+          base_test_path.write_text(base_test, encoding='utf-8')'''
+
+          script, count = re.subn(
+              r"base_test = replace_once\(base_test, '''    @Test.*?base_test_path\.write_text\(base_test, encoding='utf-8'\)",
+              lambda _: base_replacement,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'Correção do teste base não encontrada: {count}')
+
+          integration_replacement = '''integration = sub_once(
+              integration,
+              r'    @Test\\n    void deveProjetarRespostasEOferecerTresOpcoesExplicadas\\(\\) \\{',
+              ''' + "'''" + '''    @Test
+              void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {
+                  RecomendacaoProximoPickRequest request =
+                      new RecomendacaoProximoPickRequest(
+                          LadoDraft.AZUL,
+                          1,
+                          List.of(1L, 2L, 3L),
+                          List.of(1L, 4L, 5L),
+                          List.of(new PickSemFuncaoRequest(1, 7L)),
+                          List.of(
+                              new PickSemFuncaoRequest(1, 31L),
+                              new PickSemFuncaoRequest(2, 17L)
+                          ),
+                          List.of(Rota.ROAMING)
+                      );
+
+                  RecomendacaoProximoPickResponse resposta =
+                      proximoPickDnaService.recomendar(request);
+
+                  assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+                  assertNotNull(resposta.recomendacaoPrincipal());
+                  assertEquals(3, resposta.opcoesEstrategicas().size());
+                  assertTrue(resposta.opcoesEstrategicas().stream().allMatch(
+                      opcao -> opcao.projecao() != null
+                  ));
+              }
+
+              @Test
+              void deveProjetarRespostasEOferecerTresOpcoesExplicadas() {''' + "'''" + ''',
+              'Teste integrado contínuo',
+          )
+          integration_path.write_text(integration, encoding='utf-8')'''
+
+          script, count = re.subn(
+              r"integration = replace_once\(integration, '''    @Test.*?integration_path\.write_text\(integration, encoding='utf-8'\)",
+              lambda _: integration_replacement,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'Correção do teste integrado não encontrada: {count}')
+
+          Path('/tmp/live-draft-final.py').write_text(script, encoding='utf-8')
+          PY
+
+      - name: Apply patch
+        run: python3 /tmp/live-draft-final.py
+
+      - name: Validate JavaScript
+        run: node --check src/main/resources/static/js/next-pick.js
+
+      - name: Run Maven tests
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Publish clean result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm \
+            .github/workflows/temp-finalize-live-draft.yml \
+            .github/workflows/temp-apply-live-draft-v2.yml \
+            .github/workflows/temp-live-draft-visual-sync.yml \
+            live-draft-marker-report.txt \
+            live-draft-v2-diagnostic.txt \
+            live-draft-patch-output.txt
+          git add \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java \
+            src/main/resources/static/js/next-pick.js \
+            src/main/resources/static/css/next-pick.css \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+          git commit -m "feat: surface allied picks and enemy projections"
+          git push origin HEAD:feat/backend-draft-engine
