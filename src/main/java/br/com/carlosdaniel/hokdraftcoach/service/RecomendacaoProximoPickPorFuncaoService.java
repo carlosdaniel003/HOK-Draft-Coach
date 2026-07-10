@@ -16,7 +16,7 @@ public class RecomendacaoProximoPickPorFuncaoService
     extends RecomendacaoProximoPickService {
 
     public RecomendacaoProximoPickPorFuncaoService(
-        HeroiService heroiService,
+        HeroiServicePorFuncao heroiService,
         InferenciaFuncoesService inferenciaFuncoesService
     ) {
         super(heroiService, inferenciaFuncoesService);
