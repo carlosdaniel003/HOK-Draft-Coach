@@ -1,16 +1,5 @@
 package br.com.carlosdaniel.hokdraftcoach.service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.springframework.stereotype.Service;
-
 import br.com.carlosdaniel.hokdraftcoach.dto.AjusteBlindPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.ContextoDraftResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.DiagnosticoComposicaoResponse;
@@ -27,6 +16,15 @@ import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 import br.com.carlosdaniel.hokdraftcoach.model.TipoOpcaoPick;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.springframework.stereotype.Service;
 
 @Service
 public class RecomendacaoProximoPickDnaService {
@@ -52,121 +50,97 @@ public class RecomendacaoProximoPickDnaService {
         this.heroiService = heroiService;
         this.dnaComposicaoService = dnaComposicaoService;
         this.segurancaBlindPickService = segurancaBlindPickService;
-        this.projecaoService = projecaoService;
-        this.explicacaoService = explicacaoService;
+    this.projecaoService = projecaoService;
+    this.explicacaoService = explicacaoService;
+  }
+
+  public RecomendacaoProximoPickResponse recomendar(RecomendacaoProximoPickRequest request) {
+    RecomendacaoProximoPickRequest requestAlvo = requestParaProximoAliado(request);
+    List<String> aliados = nomes(picksAliados(request));
+    List<String> inimigos = nomes(picksInimigos(request));
+    ContextoDraftResponse contexto = segurancaBlindPickService.contexto(requestAlvo);
+    DiagnosticoComposicaoResponse diagnostico =
+        aliados.isEmpty() ? null : dnaComposicaoService.diagnosticar(aliados, inimigos);
+
+    RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(request);
+    if (base.recomendacaoPrincipal() == null) {
+      return anexarDiagnostico(base, diagnostico, contexto);
     }
 
-    public RecomendacaoProximoPickResponse recomendar(
-        RecomendacaoProximoPickRequest request
-    ) {
-        RecomendacaoProximoPickRequest requestAlvo = requestParaProximoAliado(
-    request
-);
-List<String> aliados = nomes(picksAliados(request));
-List<String> inimigos = nomes(picksInimigos(request));
-ContextoDraftResponse contexto = segurancaBlindPickService.contexto(
-    requestAlvo
-);
-DiagnosticoComposicaoResponse diagnostico = aliados.isEmpty()
-    ? null
-    : dnaComposicaoService.diagnosticar(aliados, inimigos);
+    List<RecomendacaoPickResponse> candidatas = new ArrayList<>();
+    candidatas.add(base.recomendacaoPrincipal());
+    candidatas.addAll(base.alternativas());
 
-RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
-    request
-);
-        if (base.recomendacaoPrincipal() == null) {
-            return anexarDiagnostico(base, diagnostico, contexto);
-        }
+    Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =
+        aliados.isEmpty() ? Map.of() : carregarDnaPorRota(candidatas, aliados, inimigos);
 
-        List<RecomendacaoPickResponse> candidatas = new ArrayList<>();
-        candidatas.add(base.recomendacaoPrincipal());
-        candidatas.addAll(base.alternativas());
-
-        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =
-            aliados.isEmpty()
-                ? Map.of()
-                : carregarDnaPorRota(candidatas, aliados, inimigos);
-
-        List<CandidatoAvaliado> avaliadas = candidatas.stream()
-            .map(recomendacao -> ajustarBase(
-                recomendacao,
-                dnaPorRota,
-                requestAlvo
-            ))
-            .map(candidato -> projetar(
-                candidato,
-                request,
-                aliados,
-                inimigos
-            ))
+    List<CandidatoAvaliado> avaliadas =
+        candidatas.stream()
+            .map(recomendacao -> ajustarBase(recomendacao, dnaPorRota, requestAlvo))
+            .map(candidato -> projetar(candidato, request, aliados, inimigos))
             .sorted(
                 Comparator.comparingInt(
-                    (CandidatoAvaliado candidato) ->
-                        candidato.pick().pontuacaoFinal()
-                )
-                .reversed()
-                .thenComparing(
-                    Comparator.comparingInt(
-                        (CandidatoAvaliado candidato) ->
-                            candidato.projecao().robustez()
-                    ).reversed()
-                )
-                .thenComparing(candidato -> candidato.pick().heroi())
-            )
+                        (CandidatoAvaliado candidato) -> candidato.pick().pontuacaoFinal())
+                    .reversed()
+                    .thenComparing(
+                        Comparator.comparingInt(
+                                (CandidatoAvaliado candidato) -> candidato.projecao().robustez())
+                            .reversed())
+                    .thenComparing(candidato -> candidato.pick().heroi()))
             .toList();
 
-        List<OpcaoPickResponse> opcoes = selecionarOpcoes(
-            avaliadas,
-            diagnostico
-        );
-        RecomendacaoPickResponse principal = opcoes.getFirst().escolha();
-        List<RecomendacaoPickResponse> alternativas = opcoes.stream()
+    List<OpcaoPickResponse> opcoes = selecionarOpcoes(avaliadas, diagnostico);
+    RecomendacaoPickResponse principal = opcoes.getFirst().escolha();
+    List<RecomendacaoPickResponse> alternativas =
+        opcoes.stream()
             .skip(1)
             .map(OpcaoPickResponse::escolha)
             .distinct()
             .limit(LIMITE_ALTERNATIVAS)
             .toList();
-        String mensagem = switch (base.estadoDraft()) {
-    case "MINHA_VEZ" ->
-        "É sua vez. A melhor escolha geral é "
-            + principal.heroi()
-            + "; a resposta também inclui a opção mais segura e a de maior impacto.";
-    case "VEZ_ALIADA" ->
-        "É a vez da sua equipe. " + principal.heroi()
-            + " é a melhor escolha geral para o próximo pick aliado.";
-    case "AGUARDANDO_INIMIGO" ->
-        "O inimigo está escolhendo. " + principal.heroi()
-            + " lidera o planejamento para a próxima resposta aliada.";
-    default -> base.mensagem();
-};
-        List<String> avisos = new ArrayList<>(base.avisos());
-        avisos.add(
-            "DNA, curva de poder, sinergias, anti-sinergias, ameaças, ordem do draft e respostas inimigas projetadas foram avaliados."
-        );
-        avisos.add("Prioridade do momento: " + contexto.prioridade());
-        avisos.add(
-            "As probabilidades de resposta inimiga são heurísticas, baseadas em funções abertas e encaixe estratégico; não representam frequência estatística real."
-        );
+    String mensagem =
+        switch (base.estadoDraft()) {
+          case "MINHA_VEZ" ->
+              "É sua vez. A melhor escolha geral é "
+                  + principal.heroi()
+                  + "; a resposta também inclui a opção mais segura e a de maior impacto.";
+          case "VEZ_ALIADA" ->
+              "É a vez da sua equipe. "
+                  + principal.heroi()
+                  + " é a melhor escolha geral para o próximo pick aliado.";
+          case "AGUARDANDO_INIMIGO" ->
+              "O inimigo está escolhendo. "
+                  + principal.heroi()
+                  + " lidera o planejamento para a próxima resposta aliada.";
+          default -> base.mensagem();
+        };
+    List<String> avisos = new ArrayList<>(base.avisos());
+    avisos.add(
+        "DNA, curva de poder, sinergias, anti-sinergias, ameaças, ordem do draft e respostas"
+            + " inimigas projetadas foram avaliados.");
+    avisos.add("Prioridade do momento: " + contexto.prioridade());
+    avisos.add(
+        "As probabilidades de resposta inimiga são heurísticas, baseadas em funções abertas e"
+            + " encaixe estratégico; não representam frequência estatística real.");
 
-        return new RecomendacaoProximoPickResponse(
-            base.versaoMotor(),
-            base.estadoDraft(),
-            mensagem,
-            base.ehMinhaVez(),
-            base.meuSlot(),
-            base.proximoLado(),
-            base.proximosSlots(),
-            base.hipotesesAliadas(),
-            base.hipotesesInimigas(),
-            base.confiancaFuncoesAliadas(),
-            base.confiancaFuncoesInimigas(),
-            contexto,
-            diagnostico,
-            principal,
-            alternativas,
-            opcoes,
-            avisos.stream().distinct().toList()
-        );
+    return new RecomendacaoProximoPickResponse(
+        base.versaoMotor(),
+        base.estadoDraft(),
+        mensagem,
+        base.ehMinhaVez(),
+        base.meuSlot(),
+        base.proximoLado(),
+        base.proximosSlots(),
+        base.hipotesesAliadas(),
+        base.hipotesesInimigas(),
+        base.confiancaFuncoesAliadas(),
+        base.confiancaFuncoesInimigas(),
+        contexto,
+        diagnostico,
+        principal,
+        alternativas,
+        opcoes,
+        avisos.stream().distinct().toList());
     }
 
     private Map<Rota, Map<String, RecomendacaoDnaResponse>> carregarDnaPorRota(
@@ -532,55 +506,51 @@ RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
             .filter(resposta -> resposta != null)
             .max(Comparator.comparingInt(RecomendacaoDnaResponse::pontuacao))
             .orElse(null);
-    }
+  }
 
-    private RecomendacaoProximoPickResponse anexarDiagnostico(
-        RecomendacaoProximoPickResponse base,
-        DiagnosticoComposicaoResponse diagnostico,
-        ContextoDraftResponse contexto
-    ) {
-        return new RecomendacaoProximoPickResponse(
-            base.versaoMotor(),
-            base.estadoDraft(),
-            base.mensagem(),
-            base.ehMinhaVez(),
-            base.meuSlot(),
-            base.proximoLado(),
-            base.proximosSlots(),
-            base.hipotesesAliadas(),
-            base.hipotesesInimigas(),
-            base.confiancaFuncoesAliadas(),
-            base.confiancaFuncoesInimigas(),
-            contexto,
-            diagnostico,
-            base.recomendacaoPrincipal(),
-            base.alternativas(),
-            List.of(),
-            base.avisos()
-        );
-    }
+  private RecomendacaoProximoPickResponse anexarDiagnostico(
+      RecomendacaoProximoPickResponse base,
+      DiagnosticoComposicaoResponse diagnostico,
+      ContextoDraftResponse contexto) {
+    return new RecomendacaoProximoPickResponse(
+        base.versaoMotor(),
+        base.estadoDraft(),
+        base.mensagem(),
+        base.ehMinhaVez(),
+        base.meuSlot(),
+        base.proximoLado(),
+        base.proximosSlots(),
+        base.hipotesesAliadas(),
+        base.hipotesesInimigas(),
+        base.confiancaFuncoesAliadas(),
+        base.confiancaFuncoesInimigas(),
+        contexto,
+        diagnostico,
+        base.recomendacaoPrincipal(),
+        base.alternativas(),
+        List.of(),
+        base.avisos());
+  }
 
-    private RecomendacaoProximoPickRequest requestParaProximoAliado(
-    RecomendacaoProximoPickRequest request
-) {
+  private RecomendacaoProximoPickRequest requestParaProximoAliado(
+      RecomendacaoProximoPickRequest request) {
     if (request.meuLado() == null) {
-        return request;
+      return request;
     }
 
     List<PickSemFuncaoRequest> aliados = picksAliados(request);
     Integer ordemAlvo = null;
     for (int ordem = 1; ordem <= 5; ordem += 1) {
-        int ordemAtual = ordem;
-        boolean preenchido = aliados.stream()
-            .anyMatch(pick -> pick.ordem().equals(ordemAtual));
-        if (!preenchido) {
-            ordemAlvo = ordem;
-            break;
-        }
+      int ordemAtual = ordem;
+      boolean preenchido = aliados.stream().anyMatch(pick -> pick.ordem().equals(ordemAtual));
+      if (!preenchido) {
+        ordemAlvo = ordem;
+        break;
+      }
     }
 
     if (ordemAlvo == null) {
-        return request;
+      return request;
     }
 
     boolean alvoEhUsuario = ordemAlvo.equals(request.minhaOrdem());
@@ -591,23 +561,18 @@ RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
         request.bansVermelho(),
         request.picksAzul(),
         request.picksVermelho(),
-        alvoEhUsuario ? request.funcoesPreferidas() : List.of()
-    );
-}
+        alvoEhUsuario ? request.funcoesPreferidas() : List.of());
+  }
 
-    private List<PickSemFuncaoRequest> picksAliados(
-        RecomendacaoProximoPickRequest request
-    ) {
-        if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
-            return request.picksAzul();
-        }
-        return request.picksVermelho();
+  private List<PickSemFuncaoRequest> picksAliados(RecomendacaoProximoPickRequest request) {
+    if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
+      return request.picksAzul();
     }
+    return request.picksVermelho();
+  }
 
-    private List<PickSemFuncaoRequest> picksInimigos(
-        RecomendacaoProximoPickRequest request
-    ) {
-        if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
+  private List<PickSemFuncaoRequest> picksInimigos(RecomendacaoProximoPickRequest request) {
+    if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
             return request.picksVermelho();
         }
         return request.picksAzul();

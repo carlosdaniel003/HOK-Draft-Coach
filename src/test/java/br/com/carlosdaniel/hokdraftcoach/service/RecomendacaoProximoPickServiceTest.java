@@ -7,12 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-import java.util.Set;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import br.com.carlosdaniel.hokdraftcoach.dto.PickSemFuncaoRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
@@ -20,6 +14,10 @@ import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
 import br.com.carlosdaniel.hokdraftcoach.exception.RegraNegocioException;
 import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class RecomendacaoProximoPickServiceTest {
 
@@ -31,78 +29,62 @@ class RecomendacaoProximoPickServiceTest {
         InferenciaFuncoesService inferenciaService =
             new InferenciaFuncoesService(heroiService);
 
-        service = new RecomendacaoProximoPickService(
-            heroiService,
-            inferenciaService
-        );
-    }
+    service = new RecomendacaoProximoPickService(heroiService, inferenciaService);
+  }
 
-    @Test
-    void devePriorizarPrimeiroSlotAliadoAbertoNaRodadaDupla() {
-        RecomendacaoProximoPickResponse resposta = service.recomendar(
-            cenarioPrincipal(LadoDraft.AZUL, 3)
-        );
-        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
-        assertFalse(resposta.ehMinhaVez());
-        assertEquals("B3", resposta.meuSlot());
-        assertTrue(resposta.mensagem().contains("B2"));
-        assertEquals(LadoDraft.AZUL, resposta.proximoLado());
-        assertTrue(resposta.proximosSlots().contains("B3"));
-        assertNotNull(resposta.recomendacaoPrincipal());
-        assertTrue(resposta.alternativas().size() <= 2);
+  @Test
+  void devePriorizarPrimeiroSlotAliadoAbertoNaRodadaDupla() {
+    RecomendacaoProximoPickResponse resposta =
+        service.recomendar(cenarioPrincipal(LadoDraft.AZUL, 3));
+    assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+    assertFalse(resposta.ehMinhaVez());
+    assertEquals("B3", resposta.meuSlot());
+    assertTrue(resposta.mensagem().contains("B2"));
+    assertEquals(LadoDraft.AZUL, resposta.proximoLado());
+    assertTrue(resposta.proximosSlots().contains("B3"));
+    assertNotNull(resposta.recomendacaoPrincipal());
+    assertTrue(resposta.alternativas().size() <= 2);
 
-        Set<Long> indisponiveis = Set.of(
-            1L, 2L, 3L, 4L, 5L, 6L,
-            8L, 20L, 17L
-        );
+    Set<Long> indisponiveis = Set.of(1L, 2L, 3L, 4L, 5L, 6L, 8L, 20L, 17L);
 
-        assertFalse(
-            indisponiveis.contains(
-                resposta.recomendacaoPrincipal().heroiId()
-            )
-        );
-        validarRecomendacao(resposta.recomendacaoPrincipal());
-    }
+    assertFalse(indisponiveis.contains(resposta.recomendacaoPrincipal().heroiId()));
+    validarRecomendacao(resposta.recomendacaoPrincipal());
+  }
 
-    @Test
-    void deveGerarPlanejamentoQuandoAindaNaoForMinhaVez() {
-        RecomendacaoProximoPickResponse resposta = service.recomendar(
-            cenarioPrincipal(LadoDraft.VERMELHO, 5)
-        );
+  @Test
+  void deveGerarPlanejamentoQuandoAindaNaoForMinhaVez() {
+    RecomendacaoProximoPickResponse resposta =
+        service.recomendar(cenarioPrincipal(LadoDraft.VERMELHO, 5));
 
-        assertEquals("AGUARDANDO_INIMIGO", resposta.estadoDraft());
-        assertFalse(resposta.ehMinhaVez());
-        assertEquals("R5", resposta.meuSlot());
-        assertNotNull(resposta.recomendacaoPrincipal());
-        assertTrue(
-            resposta.avisos().stream()
-                .anyMatch(aviso -> aviso.contains("preventiva"))
-        );
-    }
+    assertEquals("AGUARDANDO_INIMIGO", resposta.estadoDraft());
+    assertFalse(resposta.ehMinhaVez());
+    assertEquals("R5", resposta.meuSlot());
+    assertNotNull(resposta.recomendacaoPrincipal());
+    assertTrue(resposta.avisos().stream().anyMatch(aviso -> aviso.contains("preventiva")));
+  }
 
-    @Test
-    void deveContinuarRecomendandoParaAliadoDepoisDoMeuPick() {
-        RecomendacaoProximoPickResponse resposta = service.recomendar(
-            cenarioPrincipal(LadoDraft.AZUL, 1)
-        );
+  @Test
+  void deveContinuarRecomendandoParaAliadoDepoisDoMeuPick() {
+    RecomendacaoProximoPickResponse resposta =
+        service.recomendar(cenarioPrincipal(LadoDraft.AZUL, 1));
 
-        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
-        assertFalse(resposta.ehMinhaVez());
-        assertNotNull(resposta.recomendacaoPrincipal());
-        assertTrue(resposta.mensagem().contains("B2"));
-    }
+    assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+    assertFalse(resposta.ehMinhaVez());
+    assertNotNull(resposta.recomendacaoPrincipal());
+    assertTrue(resposta.mensagem().contains("B2"));
+  }
 
-    @Test
-    void deveAguardarConclusaoDosBans() {
-        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+  @Test
+  void deveAguardarConclusaoDosBans() {
+    RecomendacaoProximoPickRequest request =
+        new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,
             1,
             List.of(1L),
             List.of(2L),
             List.of(),
             List.of(),
-            List.of(Rota.MID_LANE)
-        );
+            List.of(Rota.MID_LANE));
 
         RecomendacaoProximoPickResponse resposta = service.recomendar(request);
 

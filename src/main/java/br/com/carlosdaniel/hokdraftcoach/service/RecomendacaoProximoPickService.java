@@ -1,19 +1,5 @@
 package br.com.carlosdaniel.hokdraftcoach.service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.ToIntFunction;
-
-import org.springframework.stereotype.Service;
-
 import br.com.carlosdaniel.hokdraftcoach.dto.AtribuicaoFuncaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.HipoteseFuncaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaEquipeResponse;
@@ -29,6 +15,18 @@ import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 import br.com.carlosdaniel.hokdraftcoach.model.TipoDano;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.ToIntFunction;
+import org.springframework.stereotype.Service;
 
 @Service
 public class RecomendacaoProximoPickService {
@@ -99,185 +97,151 @@ public class RecomendacaoProximoPickService {
         );
 
         if (request.meuLado() == null || request.minhaOrdem() == null) {
-            return semRecomendacao(
-                "AGUARDANDO_IDENTIFICACAO",
-                "Informe seu lado e sua ordem para calcular qual herói você deve pegar.",
-                request,
-                inferencia,
-                null,
-                List.of(),
-                List.of(
-                    "A inferência de funções continua ativa, mas a recomendação depende do seu slot."
-                )
-            );
+      return semRecomendacao(
+          "AGUARDANDO_IDENTIFICACAO",
+          "Informe seu lado e sua ordem para calcular qual herói você deve pegar.",
+          request,
+          inferencia,
+          null,
+          List.of(),
+          List.of(
+              "A inferência de funções continua ativa, mas a recomendação depende do seu slot."));
         }
 
         int totalBans = request.bansAzul().size()
             + request.bansVermelho().size();
 
         if (totalBans < 6) {
-            return semRecomendacao(
-                "FASE_DE_BANS",
-                "Conclua os seis bans antes de calcular o próximo pick.",
-                request,
-                inferencia,
-                null,
-                List.of(),
-                List.of("Faltam " + (6 - totalBans) + " ban(s).")
-            );
-        }
+      return semRecomendacao(
+          "FASE_DE_BANS",
+          "Conclua os seis bans antes de calcular o próximo pick.",
+          request,
+          inferencia,
+          null,
+          List.of(),
+          List.of("Faltam " + (6 - totalBans) + " ban(s)."));
+    }
 
-        EstadoRodada rodadaAtual = calcularRodadaAtual(request);
+    EstadoRodada rodadaAtual = calcularRodadaAtual(request);
 
-        if (rodadaAtual == null) {
-            return semRecomendacao(
-                "DRAFT_CONCLUIDO",
-                "Todos os picks já foram registrados.",
-                request,
-                inferencia,
-                null,
-                List.of(),
-                List.of()
-            );
-        }
+    if (rodadaAtual == null) {
+      return semRecomendacao(
+          "DRAFT_CONCLUIDO",
+          "Todos os picks já foram registrados.",
+          request,
+          inferencia,
+          null,
+          List.of(),
+          List.of());
+    }
 
-        Integer ordemAlvoAliada = proximaOrdemAliada(request);
-if (ordemAlvoAliada == null) {
-    return semRecomendacao(
-        "EQUIPE_ALIADA_COMPLETA",
-        "Os cinco picks da sua equipe já foram registrados.",
-        request,
-        inferencia,
-        rodadaAtual.lado(),
-        rodadaAtual.slots(),
-        List.of("Acompanhe os picks inimigos restantes e o plano final da composição.")
-    );
-}
+    Integer ordemAlvoAliada = proximaOrdemAliada(request);
+    if (ordemAlvoAliada == null) {
+      return semRecomendacao(
+          "EQUIPE_ALIADA_COMPLETA",
+          "Os cinco picks da sua equipe já foram registrados.",
+          request,
+          inferencia,
+          rodadaAtual.lado(),
+          rodadaAtual.slots(),
+          List.of("Acompanhe os picks inimigos restantes e o plano final da composição."));
+    }
 
-boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
-    request.minhaOrdem()
-) && !slotJaPreenchido(request);
-List<Rota> funcoesAlvo = recomendacaoParaUsuario
-    ? request.funcoesPreferidas()
-    : List.of();
+    boolean recomendacaoParaUsuario =
+        ordemAlvoAliada.equals(request.minhaOrdem()) && !slotJaPreenchido(request);
+    List<Rota> funcoesAlvo = recomendacaoParaUsuario ? request.funcoesPreferidas() : List.of();
 
-        InferenciaEquipeResponse aliados = equipe(
-            inferencia,
-            request.meuLado()
-        );
-        InferenciaEquipeResponse inimigos = equipe(
-            inferencia,
-            request.meuLado().adversario()
-        );
+    InferenciaEquipeResponse aliados = equipe(inferencia, request.meuLado());
+    InferenciaEquipeResponse inimigos = equipe(inferencia, request.meuLado().adversario());
 
-        if (!aliados.composicaoCompativel()) {
-            return semRecomendacao(
-                "COMPOSICAO_ALIADA_INCOMPATIVEL",
-                "Não existe uma distribuição válida de funções para sua equipe.",
-                request,
-                inferencia,
-                rodadaAtual.lado(),
-                rodadaAtual.slots(),
-                aliados.avisos()
-            );
-        }
+    if (!aliados.composicaoCompativel()) {
+      return semRecomendacao(
+          "COMPOSICAO_ALIADA_INCOMPATIVEL",
+          "Não existe uma distribuição válida de funções para sua equipe.",
+          request,
+          inferencia,
+          rodadaAtual.lado(),
+          rodadaAtual.slots(),
+          aliados.avisos());
+    }
 
-        Set<Long> indisponiveis = idsIndisponiveis(request);
-        List<Heroi> inimigosSemFuncao = heroisDosPicks(
-            picks(request, request.meuLado().adversario())
-        );
+    Set<Long> indisponiveis = idsIndisponiveis(request);
+    List<Heroi> inimigosSemFuncao = heroisDosPicks(picks(request, request.meuLado().adversario()));
 
-        Comparator<RecomendacaoPickResponse> comparador = Comparator
-            .comparingInt(RecomendacaoPickResponse::pontuacaoFinal)
+    Comparator<RecomendacaoPickResponse> comparador =
+        Comparator.comparingInt(RecomendacaoPickResponse::pontuacaoFinal)
             .reversed()
             .thenComparing(
-                Comparator.comparingInt(
-                    RecomendacaoPickResponse::piorCenario
-                ).reversed()
-            )
+                Comparator.comparingInt(RecomendacaoPickResponse::piorCenario).reversed())
             .thenComparing(RecomendacaoPickResponse::heroi);
 
-        List<RecomendacaoPickResponse> recomendacoes = heroiService
-            .listarTodos()
-            .stream()
+    List<RecomendacaoPickResponse> recomendacoes =
+        heroiService.listarTodos().stream()
             .filter(heroi -> !indisponiveis.contains(heroi.getId()))
-            .map(heroi -> avaliarCandidato(
-                heroi,
-                aliados,
-                inimigos,
-                inimigosSemFuncao,
-                funcoesAlvo
-            ))
+            .map(
+                heroi -> avaliarCandidato(heroi, aliados, inimigos, inimigosSemFuncao, funcoesAlvo))
             .filter(resultado -> resultado != null)
             .sorted(comparador)
             .toList();
 
-        if (recomendacoes.isEmpty()) {
-            return semRecomendacao(
-                "SEM_CANDIDATOS",
-                "Nenhum herói disponível preenche as funções abertas.",
-                request,
-                inferencia,
-                rodadaAtual.lado(),
-                rodadaAtual.slots(),
-                List.of(
-                    "Revise os picks, bans ou as rotas possíveis cadastradas."
-                )
-            );
-        }
-
-        RecomendacaoPickResponse principal = recomendacoes.getFirst();
-        List<RecomendacaoPickResponse> alternativas = recomendacoes
-            .stream()
-            .skip(1)
-            .limit(LIMITE_ALTERNATIVAS)
-            .toList();
-        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
-        boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
-String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
-String estadoDraft = ehMinhaVez
-    ? "MINHA_VEZ"
-    : vezAliada
-        ? "VEZ_ALIADA"
-        : "AGUARDANDO_INIMIGO";
-String mensagem = switch (estadoDraft) {
-    case "MINHA_VEZ" ->
-        "É sua vez. A melhor escolha agora é "
-            + principal.heroi() + ".";
-    case "VEZ_ALIADA" ->
-        "É a vez da sua equipe. Para " + slotAlvo
-            + ", a melhor escolha é " + principal.heroi() + ".";
-    default ->
-        "O inimigo está escolhendo. Planejamento para " + slotAlvo
-            + ": " + principal.heroi()
-            + " lidera entre as opções aliadas.";
-};
-
-return new RecomendacaoProximoPickResponse(
-    VERSAO_MOTOR,
-    estadoDraft,
-            mensagem,
-            ehMinhaVez,
-            meuSlot(request),
-            rodadaAtual.lado(),
-            rodadaAtual.slots(),
-            aliados.totalHipoteses(),
-            inimigos.totalHipoteses(),
-            aliados.confiancaMelhorHipotese(),
-            inimigos.confiancaMelhorHipotese(),
-            principal,
-            alternativas,
-            avisosGerais(request, aliados, inimigos, ehMinhaVez)
-        );
+    if (recomendacoes.isEmpty()) {
+      return semRecomendacao(
+          "SEM_CANDIDATOS",
+          "Nenhum herói disponível preenche as funções abertas.",
+          request,
+          inferencia,
+          rodadaAtual.lado(),
+          rodadaAtual.slots(),
+          List.of("Revise os picks, bans ou as rotas possíveis cadastradas."));
     }
 
-    private RecomendacaoPickResponse avaliarCandidato(
-        Heroi candidato,
-        InferenciaEquipeResponse aliados,
-        InferenciaEquipeResponse inimigos,
-        List<Heroi> inimigosSemFuncao,
-        List<Rota> funcoesPreferidas
-    ) {
+    RecomendacaoPickResponse principal = recomendacoes.getFirst();
+    List<RecomendacaoPickResponse> alternativas =
+        recomendacoes.stream().skip(1).limit(LIMITE_ALTERNATIVAS).toList();
+    boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+    boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
+    String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
+    String estadoDraft = ehMinhaVez ? "MINHA_VEZ" : vezAliada ? "VEZ_ALIADA" : "AGUARDANDO_INIMIGO";
+    String mensagem =
+        switch (estadoDraft) {
+          case "MINHA_VEZ" -> "É sua vez. A melhor escolha agora é " + principal.heroi() + ".";
+          case "VEZ_ALIADA" ->
+              "É a vez da sua equipe. Para "
+                  + slotAlvo
+                  + ", a melhor escolha é "
+                  + principal.heroi()
+                  + ".";
+          default ->
+              "O inimigo está escolhendo. Planejamento para "
+                  + slotAlvo
+                  + ": "
+                  + principal.heroi()
+                  + " lidera entre as opções aliadas.";
+        };
+
+    return new RecomendacaoProximoPickResponse(
+        VERSAO_MOTOR,
+        estadoDraft,
+        mensagem,
+        ehMinhaVez,
+        meuSlot(request),
+        rodadaAtual.lado(),
+        rodadaAtual.slots(),
+        aliados.totalHipoteses(),
+        inimigos.totalHipoteses(),
+        aliados.confiancaMelhorHipotese(),
+        inimigos.confiancaMelhorHipotese(),
+        principal,
+        alternativas,
+        avisosGerais(request, aliados, inimigos, ehMinhaVez));
+  }
+
+  private RecomendacaoPickResponse avaliarCandidato(
+      Heroi candidato,
+      InferenciaEquipeResponse aliados,
+      InferenciaEquipeResponse inimigos,
+      List<Heroi> inimigosSemFuncao,
+      List<Rota> funcoesPreferidas) {
         List<HipoteseFuncaoResponse> hipotesesAliadas = aliados.hipoteses();
         List<HipoteseFuncaoResponse> hipotesesInimigas = inimigos.hipoteses();
         List<AvaliacaoCenario> cenarios = new ArrayList<>();
@@ -788,9 +752,9 @@ return new RecomendacaoProximoPickResponse(
         boolean ehMinhaVez
     ) {
         List<String> avisos = new ArrayList<>();
-        avisos.add(
-            "Os dados estratégicos são provisórios e ainda não representam estatísticas oficiais do jogo."
-        );
+    avisos.add(
+        "Os dados estratégicos são provisórios e ainda não representam estatísticas oficiais do"
+            + " jogo.");
 
         if (!ehMinhaVez) {
             avisos.add("A recomendação é preventiva e pode mudar após os próximos picks.");
@@ -867,77 +831,59 @@ return new RecomendacaoProximoPickResponse(
         PickSemFuncaoRequest pick,
         Set<Long> bans
     ) {
-        Heroi heroi = buscarHeroi(pick.heroiId());
-        if (bans.contains(pick.heroiId())) {
-            throw new RegraNegocioException(
-                "O herói " + heroi.getNome()
-                    + " está banido e não pode ser escolhido."
-            );
-        }
+    Heroi heroi = buscarHeroi(pick.heroiId());
+    if (bans.contains(pick.heroiId())) {
+      throw new RegraNegocioException(
+          "O herói " + heroi.getNome() + " está banido e não pode ser escolhido.");
     }
+  }
 
-    private EstadoRodada calcularRodadaAtual(
-        RecomendacaoProximoPickRequest request
-    ) {
-        for (RodadaPick rodada : RODADAS) {
-            Map<Integer, Long> picks = mapaPicks(picks(request, rodada.lado()));
-            List<Integer> faltantes = rodada.ordens()
-                .stream()
-                .filter(ordem -> !picks.containsKey(ordem))
-                .toList();
-
-            if (!faltantes.isEmpty()) {
-                return new EstadoRodada(
-                    rodada.lado(),
-                    faltantes,
-                    faltantes.stream()
-                        .map(ordem -> rodada.lado().prefixoSlot() + ordem)
-                        .toList()
-                );
-            }
-        }
-
-        return null;
-    }
-
-    private Integer proximaOrdemAliada(
-    RecomendacaoProximoPickRequest request
-) {
-    Map<Integer, Long> preenchidos = mapaPicks(
-        picks(request, request.meuLado())
-    );
-
+  private EstadoRodada calcularRodadaAtual(RecomendacaoProximoPickRequest request) {
     for (RodadaPick rodada : RODADAS) {
-        if (rodada.lado() != request.meuLado()) {
-            continue;
-        }
-        for (Integer ordem : rodada.ordens()) {
-            if (!preenchidos.containsKey(ordem)) {
-                return ordem;
-            }
-        }
+      Map<Integer, Long> picks = mapaPicks(picks(request, rodada.lado()));
+      List<Integer> faltantes =
+          rodada.ordens().stream().filter(ordem -> !picks.containsKey(ordem)).toList();
+
+      if (!faltantes.isEmpty()) {
+        return new EstadoRodada(
+            rodada.lado(),
+            faltantes,
+            faltantes.stream().map(ordem -> rodada.lado().prefixoSlot() + ordem).toList());
+      }
     }
 
     return null;
-}
+  }
 
-    private boolean slotJaPreenchido(
-        RecomendacaoProximoPickRequest request
-    ) {
-        return picks(request, request.meuLado())
-            .stream()
-            .anyMatch(pick -> pick.ordem().equals(request.minhaOrdem()));
+  private Integer proximaOrdemAliada(RecomendacaoProximoPickRequest request) {
+    Map<Integer, Long> preenchidos = mapaPicks(picks(request, request.meuLado()));
+
+    for (RodadaPick rodada : RODADAS) {
+      if (rodada.lado() != request.meuLado()) {
+        continue;
+      }
+      for (Integer ordem : rodada.ordens()) {
+        if (!preenchidos.containsKey(ordem)) {
+          return ordem;
+        }
+      }
     }
 
-    private Set<Long> idsIndisponiveis(
-        RecomendacaoProximoPickRequest request
-    ) {
-        Set<Long> ids = new HashSet<>();
-        ids.addAll(request.bansAzul());
-        ids.addAll(request.bansVermelho());
-        request.picksAzul().forEach(pick -> ids.add(pick.heroiId()));
-        request.picksVermelho().forEach(pick -> ids.add(pick.heroiId()));
-        return ids;
+    return null;
+  }
+
+  private boolean slotJaPreenchido(RecomendacaoProximoPickRequest request) {
+    return picks(request, request.meuLado()).stream()
+        .anyMatch(pick -> pick.ordem().equals(request.minhaOrdem()));
+  }
+
+  private Set<Long> idsIndisponiveis(RecomendacaoProximoPickRequest request) {
+    Set<Long> ids = new HashSet<>();
+    ids.addAll(request.bansAzul());
+    ids.addAll(request.bansVermelho());
+    request.picksAzul().forEach(pick -> ids.add(pick.heroiId()));
+    request.picksVermelho().forEach(pick -> ids.add(pick.heroiId()));
+    return ids;
     }
 
     private List<PickSemFuncaoRequest> picks(
