@@ -1,2 +1,0 @@
-Mensagens do orquestrador DNA: esperado 1 bloco, encontrado 0
-status=1
