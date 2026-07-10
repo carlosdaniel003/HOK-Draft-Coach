@@ -1,12 +1,13 @@
-const ORDEM_BANS_RANQUEADA = [
-    { lado: "AZUL", indice: 0 },
-    { lado: "AZUL", indice: 1 },
-    { lado: "AZUL", indice: 2 },
-    { lado: "VERMELHO", indice: 0 },
-    { lado: "VERMELHO", indice: 1 },
-    { lado: "VERMELHO", indice: 2 }
-];
+const ORDEM_BANS_RANQUEADA = Object.freeze([
+    Object.freeze({ lado: "AZUL", indice: 0 }),
+    Object.freeze({ lado: "AZUL", indice: 1 }),
+    Object.freeze({ lado: "AZUL", indice: 2 }),
+    Object.freeze({ lado: "VERMELHO", indice: 0 }),
+    Object.freeze({ lado: "VERMELHO", indice: 1 }),
+    Object.freeze({ lado: "VERMELHO", indice: 2 })
+]);
 
+const TOTAL_BANS_RANQUEADA = ORDEM_BANS_RANQUEADA.length;
 const abrirModalBaseRanqueada = abrirModal;
 const selecionarHeroiBaseRanqueada = selecionarHeroi;
 const calcularEstadoDraftBaseRanqueada = calcularEstadoDraft;
@@ -14,11 +15,9 @@ const calcularEstadoDraftBaseRanqueada = calcularEstadoDraft;
 abrirModal = function abrirModalRanqueada(tipo, lado, indice) {
     abrirModalBaseRanqueada(tipo, lado, indice);
 
-    if (tipo !== "BAN") {
-        return;
+    if (tipo === "BAN") {
+        atualizarCabecalhoBanRanqueada(lado, indice);
     }
-
-    atualizarCabecalhoBanRanqueada(lado, indice);
 };
 
 selecionarHeroi = function selecionarHeroiRanqueada(heroiId) {
@@ -37,7 +36,6 @@ selecionarHeroi = function selecionarHeroiRanqueada(heroiId) {
 
     const slotPreenchido = { ...estado.slotAtual };
     estado.bans[slotPreenchido.lado][slotPreenchido.indice] = heroi;
-    renderizarTudo();
 
     const proximoSlot = encontrarProximoBanVazio(slotPreenchido);
 
@@ -52,6 +50,7 @@ selecionarHeroi = function selecionarHeroiRanqueada(heroiId) {
     filtroRota.value = "";
     botaoRemoverHeroi.classList.add("oculto");
 
+    renderizarTudo();
     atualizarCabecalhoBanRanqueada(
         proximoSlot.lado,
         proximoSlot.indice
@@ -68,30 +67,11 @@ heroiEstaEmOutroSlot = function heroiEstaIndisponivelRanqueada(heroiId) {
     }
 
     if (atual.tipo === "BAN") {
-        const repetidoNoMesmoLado = listarSlots("BAN", atual.lado)
-            .some((slot) =>
-                !ehMesmoSlot(slot, atual)
-                && slot.heroi
-                && Number(slot.heroi.id) === Number(heroiId)
-            );
-
-        const jaEscolhido = [
-            ...listarSlots("PICK", "AZUL"),
-            ...listarSlots("PICK", "VERMELHO")
-        ].some((slot) =>
-            slot.heroi
-            && Number(slot.heroi.id) === Number(heroiId)
-        );
-
-        return repetidoNoMesmoLado || jaEscolhido;
+        return heroiJaBanidoPeloMesmoLado(heroiId, atual)
+            || heroiJaEscolhido(heroiId);
     }
 
-    return [
-        ...listarSlots("BAN", "AZUL"),
-        ...listarSlots("BAN", "VERMELHO"),
-        ...listarSlots("PICK", "AZUL"),
-        ...listarSlots("PICK", "VERMELHO")
-    ].some((slot) =>
+    return listarTodosSlotsDraft().some((slot) =>
         !ehMesmoSlot(slot, atual)
         && slot.heroi
         && Number(slot.heroi.id) === Number(heroiId)
@@ -109,7 +89,7 @@ calcularEstadoDraft = function calcularEstadoDraftRanqueada() {
         ...leitura,
         titulo: "Registre os seis bans revelados",
         descricao:
-            `Bans simultâneos: faltam ${6 - leitura.quantidadeBans}. `
+            `Bans simultâneos: faltam ${TOTAL_BANS_RANQUEADA - leitura.quantidadeBans}. `
             + "O mesmo herói pode aparecer uma vez em cada equipe."
     };
 };
@@ -120,10 +100,14 @@ function encontrarProximoBanVazio(slotAtual) {
         && slot.indice === slotAtual.indice
     );
 
-    for (let deslocamento = 1; deslocamento <= ORDEM_BANS_RANQUEADA.length; deslocamento += 1) {
+    for (
+        let deslocamento = 1;
+        deslocamento <= TOTAL_BANS_RANQUEADA;
+        deslocamento += 1
+    ) {
         const posicao = (
             Math.max(posicaoAtual, -1) + deslocamento
-        ) % ORDEM_BANS_RANQUEADA.length;
+        ) % TOTAL_BANS_RANQUEADA;
         const candidato = ORDEM_BANS_RANQUEADA[posicao];
 
         if (!estado.bans[candidato.lado][candidato.indice]) {
@@ -138,12 +122,39 @@ function encontrarProximoBanVazio(slotAtual) {
     return null;
 }
 
+function heroiJaBanidoPeloMesmoLado(heroiId, atual) {
+    return listarSlots("BAN", atual.lado).some((slot) =>
+        !ehMesmoSlot(slot, atual)
+        && slot.heroi
+        && Number(slot.heroi.id) === Number(heroiId)
+    );
+}
+
+function heroiJaEscolhido(heroiId) {
+    return [
+        ...listarSlots("PICK", "AZUL"),
+        ...listarSlots("PICK", "VERMELHO")
+    ].some((slot) =>
+        slot.heroi
+        && Number(slot.heroi.id) === Number(heroiId)
+    );
+}
+
+function listarTodosSlotsDraft() {
+    return [
+        ...listarSlots("BAN", "AZUL"),
+        ...listarSlots("BAN", "VERMELHO"),
+        ...listarSlots("PICK", "AZUL"),
+        ...listarSlots("PICK", "VERMELHO")
+    ];
+}
+
 function atualizarCabecalhoBanRanqueada(lado, indice) {
     modalEtiqueta.textContent = "Modo ranqueada · bans simultâneos";
     modalTitulo.textContent =
-        `${LADOS[lado].nome} · Ban ${indice + 1}`;
+        `${LADOS[lado].nome} · Ban ${indice + 1} de 3`;
     modalDescricao.textContent =
-        "Selecione os seis bans em sequência. Cada equipe só pode banir um herói uma vez, mas os dois lados podem repetir o mesmo ban.";
+        "Selecione os seis bans em sequência. Cada equipe só pode banir um herói uma vez, mas as duas equipes podem repetir o mesmo ban.";
 }
 
 function ehMesmoSlot(slot, atual) {
