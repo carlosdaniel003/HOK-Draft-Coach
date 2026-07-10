@@ -1,19 +1,27 @@
 package br.com.carlosdaniel.hokdraftcoach.service;
 
 import java.util.List;
+import java.util.Optional;
 
-import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
 import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 
 @Service
-@Primary
 public class HeroiServicePorFuncao extends HeroiService {
 
     private static final ThreadLocal<List<Rota>> FUNCOES_RESTRITAS =
         ThreadLocal.withInitial(List::of);
+
+    private final HeroiService catalogoCompleto;
+
+    public HeroiServicePorFuncao(
+        @Qualifier("heroiServiceCompleto") HeroiService catalogoCompleto
+    ) {
+        this.catalogoCompleto = catalogoCompleto;
+    }
 
     static EscopoFuncao restringirA(List<Rota> funcoes) {
         List<Rota> anteriores = FUNCOES_RESTRITAS.get();
@@ -25,13 +33,30 @@ public class HeroiServicePorFuncao extends HeroiService {
     public List<Heroi> listarTodos() {
         List<Rota> funcoes = FUNCOES_RESTRITAS.get();
         if (funcoes.isEmpty()) {
-            return super.listarTodos();
+            return catalogoCompleto.listarTodos();
         }
 
-        return super.listarTodos().stream()
+        return catalogoCompleto.listarTodos().stream()
             .map(heroi -> limitarAsFuncoes(heroi, funcoes))
             .filter(heroi -> heroi != null)
             .toList();
+    }
+
+    @Override
+    public List<Heroi> listarPorRota(Rota rota) {
+        return listarTodos().stream()
+            .filter(heroi -> heroi.podeJogarNaRota(rota))
+            .toList();
+    }
+
+    @Override
+    public Optional<Heroi> buscarPorId(Long id) {
+        return catalogoCompleto.buscarPorId(id);
+    }
+
+    @Override
+    public Optional<Heroi> buscarPorNome(String nome) {
+        return catalogoCompleto.buscarPorNome(nome);
     }
 
     private Heroi limitarAsFuncoes(Heroi heroi, List<Rota> funcoes) {
