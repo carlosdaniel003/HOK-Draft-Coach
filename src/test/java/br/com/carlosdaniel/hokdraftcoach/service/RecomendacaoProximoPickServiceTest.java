@@ -100,6 +100,45 @@ class RecomendacaoProximoPickServiceTest {
     }
 
     @Test
+    void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {
+        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 2L, 3L),
+            List.of(1L, 4L, 5L),
+            List.of(),
+            List.of(),
+            List.of(Rota.MID_LANE)
+        );
+
+        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+
+        assertEquals("MINHA_VEZ", resposta.estadoDraft());
+        assertNotNull(resposta.recomendacaoPrincipal());
+        assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));
+    }
+
+    @Test
+    void deveRejeitarBanRepetidoNaMesmaEquipe() {
+        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 1L, 2L),
+            List.of(3L, 4L, 5L),
+            List.of(),
+            List.of(),
+            List.of()
+        );
+
+        RegraNegocioException erro = assertThrows(
+            RegraNegocioException.class,
+            () -> service.recomendar(request)
+        );
+
+        assertTrue(erro.getMessage().contains("lado azul"));
+    }
+
+    @Test
     void deveRejeitarHeroiBanidoNosPicks() {
         RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
             LadoDraft.AZUL,

@@ -803,19 +803,27 @@ public class RecomendacaoProximoPickService {
             );
         }
 
-        Set<Long> bans = new HashSet<>();
-        validarBans(request.bansAzul(), "lado azul", bans);
-        validarBans(request.bansVermelho(), "lado vermelho", bans);
+        Set<Long> bansAzul = validarBans(
+            request.bansAzul(),
+            "lado azul"
+        );
+        Set<Long> bansVermelho = validarBans(
+            request.bansVermelho(),
+            "lado vermelho"
+        );
+        Set<Long> bans = new HashSet<>(bansAzul);
+        bans.addAll(bansVermelho);
 
         request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));
         request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));
     }
 
-    private void validarBans(
+    private Set<Long> validarBans(
         List<Long> ids,
-        String lado,
-        Set<Long> bans
+        String lado
     ) {
+        Set<Long> bansDoLado = new HashSet<>();
+
         for (Long id : ids) {
             if (id == null || id <= 0) {
                 throw new RegraNegocioException(
@@ -824,13 +832,15 @@ public class RecomendacaoProximoPickService {
             }
 
             Heroi heroi = buscarHeroi(id);
-            if (!bans.add(id)) {
+            if (!bansDoLado.add(id)) {
                 throw new RegraNegocioException(
                     "O herói " + heroi.getNome()
-                        + " foi banido mais de uma vez."
+                        + " foi banido mais de uma vez pelo " + lado + "."
                 );
             }
         }
+
+        return bansDoLado;
     }
 
     private void validarPickBanido(
