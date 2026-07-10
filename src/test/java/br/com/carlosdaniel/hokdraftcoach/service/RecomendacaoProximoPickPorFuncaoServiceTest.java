@@ -23,7 +23,7 @@ class RecomendacaoProximoPickPorFuncaoServiceTest {
 
     @BeforeEach
     void configurar() {
-        heroiService = new HeroiServicePorFuncao();
+        heroiService = new HeroiServicePorFuncao(new HeroiService());
         InferenciaFuncoesService inferencia =
             new InferenciaFuncoesService(heroiService);
         service = new RecomendacaoProximoPickPorFuncaoService(
