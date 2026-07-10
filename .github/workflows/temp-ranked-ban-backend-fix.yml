@@ -37,75 +37,79 @@ jobs:
           service_path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java")
           service = service_path.read_text(encoding="utf-8")
 
-          old_validation = '''        Set<Long> bans = new HashSet<>();
-          validarBans(request.bansAzul(), "lado azul", bans);
-          validarBans(request.bansVermelho(), "lado vermelho", bans);
+          old_validation = (
+          "        Set<Long> bans = new HashSet<>();\n"
+          "        validarBans(request.bansAzul(), \"lado azul\", bans);\n"
+          "        validarBans(request.bansVermelho(), \"lado vermelho\", bans);\n"
+          "\n"
+          "        request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));\n"
+          "        request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));\n"
+          )
+          new_validation = (
+          "        Set<Long> bansAzul = validarBans(\n"
+          "            request.bansAzul(),\n"
+          "            \"lado azul\"\n"
+          "        );\n"
+          "        Set<Long> bansVermelho = validarBans(\n"
+          "            request.bansVermelho(),\n"
+          "            \"lado vermelho\"\n"
+          "        );\n"
+          "        Set<Long> bans = new HashSet<>(bansAzul);\n"
+          "        bans.addAll(bansVermelho);\n"
+          "\n"
+          "        request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));\n"
+          "        request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));\n"
+          )
 
-          request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));
-          request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));
-          '''
-          new_validation = '''        Set<Long> bansAzul = validarBans(
-              request.bansAzul(),
-              "lado azul"
-          );
-          Set<Long> bansVermelho = validarBans(
-              request.bansVermelho(),
-              "lado vermelho"
-          );
-          Set<Long> bans = new HashSet<>(bansAzul);
-          bans.addAll(bansVermelho);
-
-          request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));
-          request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));
-          '''
-
-          old_method = '''    private void validarBans(
-              List<Long> ids,
-              String lado,
-              Set<Long> bans
-          ) {
-              for (Long id : ids) {
-                  if (id == null || id <= 0) {
-                      throw new RegraNegocioException(
-                          "Existe um ID inválido nos bans do " + lado + "."
-                      );
-                  }
-
-                  Heroi heroi = buscarHeroi(id);
-                  if (!bans.add(id)) {
-                      throw new RegraNegocioException(
-                          "O herói " + heroi.getNome()
-                              + " foi banido mais de uma vez."
-                      );
-                  }
-              }
-          }
-          '''
-          new_method = '''    private Set<Long> validarBans(
-              List<Long> ids,
-              String lado
-          ) {
-              Set<Long> bansDoLado = new HashSet<>();
-
-              for (Long id : ids) {
-                  if (id == null || id <= 0) {
-                      throw new RegraNegocioException(
-                          "Existe um ID inválido nos bans do " + lado + "."
-                      );
-                  }
-
-                  Heroi heroi = buscarHeroi(id);
-                  if (!bansDoLado.add(id)) {
-                      throw new RegraNegocioException(
-                          "O herói " + heroi.getNome()
-                              + " foi banido mais de uma vez pelo " + lado + "."
-                      );
-                  }
-              }
-
-              return bansDoLado;
-          }
-          '''
+          old_method = (
+          "    private void validarBans(\n"
+          "        List<Long> ids,\n"
+          "        String lado,\n"
+          "        Set<Long> bans\n"
+          "    ) {\n"
+          "        for (Long id : ids) {\n"
+          "            if (id == null || id <= 0) {\n"
+          "                throw new RegraNegocioException(\n"
+          "                    \"Existe um ID inválido nos bans do \" + lado + \".\"\n"
+          "                );\n"
+          "            }\n"
+          "\n"
+          "            Heroi heroi = buscarHeroi(id);\n"
+          "            if (!bans.add(id)) {\n"
+          "                throw new RegraNegocioException(\n"
+          "                    \"O herói \" + heroi.getNome()\n"
+          "                        + \" foi banido mais de uma vez.\"\n"
+          "                );\n"
+          "            }\n"
+          "        }\n"
+          "    }\n"
+          )
+          new_method = (
+          "    private Set<Long> validarBans(\n"
+          "        List<Long> ids,\n"
+          "        String lado\n"
+          "    ) {\n"
+          "        Set<Long> bansDoLado = new HashSet<>();\n"
+          "\n"
+          "        for (Long id : ids) {\n"
+          "            if (id == null || id <= 0) {\n"
+          "                throw new RegraNegocioException(\n"
+          "                    \"Existe um ID inválido nos bans do \" + lado + \".\"\n"
+          "                );\n"
+          "            }\n"
+          "\n"
+          "            Heroi heroi = buscarHeroi(id);\n"
+          "            if (!bansDoLado.add(id)) {\n"
+          "                throw new RegraNegocioException(\n"
+          "                    \"O herói \" + heroi.getNome()\n"
+          "                        + \" foi banido mais de uma vez pelo \" + lado + \".\"\n"
+          "                );\n"
+          "            }\n"
+          "        }\n"
+          "\n"
+          "        return bansDoLado;\n"
+          "    }\n"
+          )
 
           if service.count(old_validation) != 1:
               raise SystemExit("Bloco de validação dos bans não encontrado exatamente uma vez.")
@@ -118,49 +122,51 @@ jobs:
 
           base_test_path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java")
           base_test = base_test_path.read_text(encoding="utf-8")
-          base_marker = '''    @Test
-              void deveRejeitarHeroiBanidoNosPicks() {
-          '''
-          base_tests = '''    @Test
-              void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {
-                  RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
-                      LadoDraft.AZUL,
-                      1,
-                      List.of(1L, 2L, 3L),
-                      List.of(1L, 4L, 5L),
-                      List.of(),
-                      List.of(),
-                      List.of(Rota.MID_LANE)
-                  );
-
-                  RecomendacaoProximoPickResponse resposta = service.recomendar(request);
-
-                  assertEquals("MINHA_VEZ", resposta.estadoDraft());
-                  assertNotNull(resposta.recomendacaoPrincipal());
-                  assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));
-              }
-
-              @Test
-              void deveRejeitarBanRepetidoNaMesmaEquipe() {
-                  RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
-                      LadoDraft.AZUL,
-                      1,
-                      List.of(1L, 1L, 2L),
-                      List.of(3L, 4L, 5L),
-                      List.of(),
-                      List.of(),
-                      List.of()
-                  );
-
-                  RegraNegocioException erro = assertThrows(
-                      RegraNegocioException.class,
-                      () -> service.recomendar(request)
-                  );
-
-                  assertTrue(erro.getMessage().contains("lado azul"));
-              }
-
-          '''
+          base_marker = (
+          "    @Test\n"
+          "    void deveRejeitarHeroiBanidoNosPicks() {\n"
+          )
+          base_tests = (
+          "    @Test\n"
+          "    void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {\n"
+          "        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(\n"
+          "            LadoDraft.AZUL,\n"
+          "            1,\n"
+          "            List.of(1L, 2L, 3L),\n"
+          "            List.of(1L, 4L, 5L),\n"
+          "            List.of(),\n"
+          "            List.of(),\n"
+          "            List.of(Rota.MID_LANE)\n"
+          "        );\n"
+          "\n"
+          "        RecomendacaoProximoPickResponse resposta = service.recomendar(request);\n"
+          "\n"
+          "        assertEquals(\"MINHA_VEZ\", resposta.estadoDraft());\n"
+          "        assertNotNull(resposta.recomendacaoPrincipal());\n"
+          "        assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));\n"
+          "    }\n"
+          "\n"
+          "    @Test\n"
+          "    void deveRejeitarBanRepetidoNaMesmaEquipe() {\n"
+          "        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(\n"
+          "            LadoDraft.AZUL,\n"
+          "            1,\n"
+          "            List.of(1L, 1L, 2L),\n"
+          "            List.of(3L, 4L, 5L),\n"
+          "            List.of(),\n"
+          "            List.of(),\n"
+          "            List.of()\n"
+          "        );\n"
+          "\n"
+          "        RegraNegocioException erro = assertThrows(\n"
+          "            RegraNegocioException.class,\n"
+          "            () -> service.recomendar(request)\n"
+          "        );\n"
+          "\n"
+          "        assertTrue(erro.getMessage().contains(\"lado azul\"));\n"
+          "    }\n"
+          "\n"
+          )
 
           if base_test.count(base_marker) != 1:
               raise SystemExit("Marcador dos testes do motor base não encontrado exatamente uma vez.")
@@ -169,12 +175,14 @@ jobs:
 
           integration_path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java")
           integration = integration_path.read_text(encoding="utf-8")
-          old_bans = '''                List.of(1L, 2L, 3L),
-                          List.of(4L, 5L, 6L),
-          '''
-          new_bans = '''                List.of(1L, 2L, 3L),
-                          List.of(1L, 4L, 5L),
-          '''
+          old_bans = (
+          "                List.of(1L, 2L, 3L),\n"
+          "                List.of(4L, 5L, 6L),\n"
+          )
+          new_bans = (
+          "                List.of(1L, 2L, 3L),\n"
+          "                List.of(1L, 4L, 5L),\n"
+          )
 
           if integration.count(old_bans) != 1:
               raise SystemExit("Cenário de integração dos bans não encontrado exatamente uma vez.")
