@@ -990,3 +990,5 @@ jobs:
             src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
           git commit -m "feat: surface allied picks and enemy projections"
           git push origin HEAD:feat/backend-draft-engine
+
+# trigger: 1
