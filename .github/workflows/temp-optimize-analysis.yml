@@ -38,21 +38,10 @@ jobs:
                   raise SystemExit(f"{label}: esperado 1 bloco, encontrado {count}")
               return text.replace(old, new, 1)
 
-          # 1. Corrigir o cadastro da Chicha e versionar o meta da Farm Lane.
           hero_path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiService.java")
           hero = hero_path.read_text(encoding="utf-8")
-          hero = replace_once(
-              hero,
-              'private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.0";',
-              'private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.1";',
-              "Versão do meta da Farm Lane"
-          )
-          hero = replace_once(
-              hero,
-              'private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 2);',
-              'private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 10);',
-              "Data do meta da Farm Lane"
-          )
+          hero = replace_once(hero, 'private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.0";', 'private static final String VERSAO_META_FARM = "S15-HOK-PLUS-2.1";', "Versão do meta da Farm Lane")
+          hero = replace_once(hero, 'private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 2);', 'private static final LocalDate DATA_META_FARM = LocalDate.of(2026, 7, 10);', "Data do meta da Farm Lane")
           old_chicha = '''        criarHeroiFarm(
               25L,
               "Chicha",
@@ -82,67 +71,35 @@ jobs:
           hero = replace_once(hero, old_chicha, new_chicha, "Cadastro da Chicha")
           hero_path.write_text(hero, encoding="utf-8")
 
-          # 2. Cachear a inferência de funções, hoje recalculada várias vezes no mesmo request.
           infer_path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesService.java")
           infer = infer_path.read_text(encoding="utf-8")
-          infer = replace_once(
-              infer,
-              'import java.util.Set;\n',
-              'import java.util.Set;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.ConcurrentMap;\n',
-              "Imports de cache da inferência"
-          )
-          infer = replace_once(
-              infer,
-              '    private static final int PONTOS_ROTA_SECUNDARIA = 12;\n',
-              '    private static final int PONTOS_ROTA_SECUNDARIA = 12;\n    private static final int LIMITE_CACHE_INFERENCIA = 128;\n',
-              "Limite do cache da inferência"
-          )
-          infer = replace_once(
-              infer,
-              '    private final HeroiService heroiService;\n',
-              '    private final HeroiService heroiService;\n    private final ConcurrentMap<ChaveInferencia, InferenciaFuncoesResponse> cacheInferencias =\n        new ConcurrentHashMap<>();\n',
-              "Campo de cache da inferência"
-          )
-          old_infer_method = '''    public InferenciaFuncoesResponse inferir(
+          infer = replace_once(infer, 'import java.util.Set;\n', 'import java.util.Set;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.ConcurrentMap;\n', "Imports de cache da inferência")
+          infer = replace_once(infer, '    private static final int PONTOS_ROTA_SECUNDARIA = 12;\n', '    private static final int PONTOS_ROTA_SECUNDARIA = 12;\n    private static final int LIMITE_CACHE_INFERENCIA = 128;\n', "Limite do cache da inferência")
+          infer = replace_once(infer, '    private final HeroiService heroiService;\n', '    private final HeroiService heroiService;\n    private final ConcurrentMap<ChaveInferencia, InferenciaFuncoesResponse> cacheInferencias =\n        new ConcurrentHashMap<>();\n', "Campo de cache da inferência")
+          infer = replace_once(infer, '''    public InferenciaFuncoesResponse inferir(
           InferenciaFuncoesRequest request
       ) {
-          List<PickInterno> picksAzul = carregarPicks('''
-          new_infer_method = '''    public InferenciaFuncoesResponse inferir(
+          List<PickInterno> picksAzul = carregarPicks(''', '''    public InferenciaFuncoesResponse inferir(
           InferenciaFuncoesRequest request
       ) {
           ChaveInferencia chave = new ChaveInferencia(
               List.copyOf(request.picksAzul()),
               List.copyOf(request.picksVermelho())
           );
-          if (
-              cacheInferencias.size() >= LIMITE_CACHE_INFERENCIA
-                  && !cacheInferencias.containsKey(chave)
-          ) {
+          if (cacheInferencias.size() >= LIMITE_CACHE_INFERENCIA && !cacheInferencias.containsKey(chave)) {
               cacheInferencias.clear();
           }
-          return cacheInferencias.computeIfAbsent(
-              chave,
-              ignorada -> calcularInferencia(request)
-          );
+          return cacheInferencias.computeIfAbsent(chave, ignorada -> calcularInferencia(request));
       }
 
       private InferenciaFuncoesResponse calcularInferencia(
           InferenciaFuncoesRequest request
       ) {
-          List<PickInterno> picksAzul = carregarPicks('''
-          infer = replace_once(
-              infer,
-              old_infer_method,
-              new_infer_method,
-              "Wrapper de cache da inferência"
-          )
-          infer = replace_once(
-              infer,
-              '''    private record PickInterno(
+          List<PickInterno> picksAzul = carregarPicks(''', "Wrapper de cache da inferência")
+          infer = replace_once(infer, '''    private record PickInterno(
           String slot,
           Heroi heroi
-      ) {''',
-              '''    private record ChaveInferencia(
+      ) {''', '''    private record ChaveInferencia(
           List<PickSemFuncaoRequest> picksAzul,
           List<PickSemFuncaoRequest> picksVermelho
       ) {
@@ -151,105 +108,61 @@ jobs:
       private record PickInterno(
           String slot,
           Heroi heroi
-      ) {''',
-              "Chave do cache da inferência"
-          )
+      ) {''', "Chave do cache da inferência")
           infer_path.write_text(infer, encoding="utf-8")
 
-          # 3. Cachear diagnósticos e recomendações estratégicas determinísticas.
           analysis_path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaComposicaoService.java")
           analysis = analysis_path.read_text(encoding="utf-8")
-          analysis = replace_once(
-              analysis,
-              'import java.util.Set;\n',
-              'import java.util.Set;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.ConcurrentMap;\n',
-              "Imports de cache da análise"
-          )
-          analysis = replace_once(
-              analysis,
-              'public class AnaliseAmeacaComposicaoService\n    extends AnaliseTemporalSinergiaService {\n\n',
-              'public class AnaliseAmeacaComposicaoService\n    extends AnaliseTemporalSinergiaService {\n\n    private static final int LIMITE_CACHE_ANALISE = 256;\n\n',
-              "Limite do cache estratégico"
-          )
-          analysis = replace_once(
-              analysis,
-              '''    private final HeroiService heroiService;
+          analysis = replace_once(analysis, 'import java.util.Set;\n', 'import java.util.Set;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.ConcurrentMap;\n', "Imports de cache da análise")
+          analysis = replace_once(analysis, 'public class AnaliseAmeacaComposicaoService\n    extends AnaliseTemporalSinergiaService {\n\n', 'public class AnaliseAmeacaComposicaoService\n    extends AnaliseTemporalSinergiaService {\n\n    private static final int LIMITE_CACHE_ANALISE = 256;\n\n', "Limite do cache estratégico")
+          analysis = replace_once(analysis, '''    private final HeroiService heroiService;
       private final AnaliseAmeacaService analiseAmeacaService;
-''',
-              '''    private final HeroiService heroiService;
+''', '''    private final HeroiService heroiService;
       private final AnaliseAmeacaService analiseAmeacaService;
-      private final ConcurrentMap<ChaveDiagnostico, DiagnosticoComposicaoResponse> cacheDiagnosticos =
-          new ConcurrentHashMap<>();
-      private final ConcurrentMap<ChaveRecomendacao, List<RecomendacaoDnaResponse>> cacheRecomendacoes =
-          new ConcurrentHashMap<>();
-''',
-              "Campos de cache estratégico"
-          )
-          old_diag = '''    @Override
+      private final ConcurrentMap<ChaveDiagnostico, DiagnosticoComposicaoResponse> cacheDiagnosticos = new ConcurrentHashMap<>();
+      private final ConcurrentMap<ChaveRecomendacao, List<RecomendacaoDnaResponse>> cacheRecomendacoes = new ConcurrentHashMap<>();
+''', "Campos de cache estratégico")
+          analysis = replace_once(analysis, '''    @Override
       public DiagnosticoComposicaoResponse diagnosticar(
           List<String> aliados,
           List<String> inimigos
       ) {
-          DiagnosticoComposicaoResponse base = super.diagnosticar('''
-          new_diag = '''    @Override
+          DiagnosticoComposicaoResponse base = super.diagnosticar(''', '''    @Override
       public DiagnosticoComposicaoResponse diagnosticar(
           List<String> aliados,
           List<String> inimigos
       ) {
-          ChaveDiagnostico chave = new ChaveDiagnostico(
-              copiarNomes(aliados),
-              copiarNomes(inimigos)
-          );
-          if (
-              cacheDiagnosticos.size() >= LIMITE_CACHE_ANALISE
-                  && !cacheDiagnosticos.containsKey(chave)
-          ) {
+          ChaveDiagnostico chave = new ChaveDiagnostico(copiarNomes(aliados), copiarNomes(inimigos));
+          if (cacheDiagnosticos.size() >= LIMITE_CACHE_ANALISE && !cacheDiagnosticos.containsKey(chave)) {
               cacheDiagnosticos.clear();
           }
-          return cacheDiagnosticos.computeIfAbsent(
-              chave,
-              ignorada -> calcularDiagnostico(aliados, inimigos)
-          );
+          return cacheDiagnosticos.computeIfAbsent(chave, ignorada -> calcularDiagnostico(aliados, inimigos));
       }
 
       private DiagnosticoComposicaoResponse calcularDiagnostico(
           List<String> aliados,
           List<String> inimigos
       ) {
-          DiagnosticoComposicaoResponse base = super.diagnosticar('''
-          analysis = replace_once(analysis, old_diag, new_diag, "Cache de diagnósticos")
-
-          old_rec = '''    @Override
+          DiagnosticoComposicaoResponse base = super.diagnosticar(''', "Cache de diagnósticos")
+          analysis = replace_once(analysis, '''    @Override
       public List<RecomendacaoDnaResponse> recomendar(
           List<String> aliados,
           List<String> inimigos,
           Rota rota,
           int limite
       ) {
-          List<RecomendacaoDnaResponse> base = super.recomendar('''
-          new_rec = '''    @Override
+          List<RecomendacaoDnaResponse> base = super.recomendar(''', '''    @Override
       public List<RecomendacaoDnaResponse> recomendar(
           List<String> aliados,
           List<String> inimigos,
           Rota rota,
           int limite
       ) {
-          ChaveRecomendacao chave = new ChaveRecomendacao(
-              copiarNomes(aliados),
-              copiarNomes(inimigos),
-              rota,
-              limite
-          );
-          if (
-              cacheRecomendacoes.size() >= LIMITE_CACHE_ANALISE
-                  && !cacheRecomendacoes.containsKey(chave)
-          ) {
+          ChaveRecomendacao chave = new ChaveRecomendacao(copiarNomes(aliados), copiarNomes(inimigos), rota, limite);
+          if (cacheRecomendacoes.size() >= LIMITE_CACHE_ANALISE && !cacheRecomendacoes.containsKey(chave)) {
               cacheRecomendacoes.clear();
           }
-          return cacheRecomendacoes.computeIfAbsent(
-              chave,
-              ignorada -> calcularRecomendacao(aliados, inimigos, rota, limite)
-          );
+          return cacheRecomendacoes.computeIfAbsent(chave, ignorada -> calcularRecomendacao(aliados, inimigos, rota, limite));
       }
 
       private List<RecomendacaoDnaResponse> calcularRecomendacao(
@@ -258,50 +171,29 @@ jobs:
           Rota rota,
           int limite
       ) {
-          List<RecomendacaoDnaResponse> base = super.recomendar('''
-          analysis = replace_once(analysis, old_rec, new_rec, "Cache de recomendações estratégicas")
-
-          analysis = replace_once(
-              analysis,
-              '''    private String normalizar(String valor) {''',
-              '''    private List<String> copiarNomes(List<String> nomes) {
+          List<RecomendacaoDnaResponse> base = super.recomendar(''', "Cache de recomendações estratégicas")
+          analysis = replace_once(analysis, '''    private String normalizar(String valor) {''', '''    private List<String> copiarNomes(List<String> nomes) {
           return nomes == null ? List.of() : List.copyOf(nomes);
       }
 
-      private record ChaveDiagnostico(
-          List<String> aliados,
-          List<String> inimigos
-      ) {
+      private record ChaveDiagnostico(List<String> aliados, List<String> inimigos) {
       }
 
-      private record ChaveRecomendacao(
-          List<String> aliados,
-          List<String> inimigos,
-          Rota rota,
-          int limite
-      ) {
+      private record ChaveRecomendacao(List<String> aliados, List<String> inimigos, Rota rota, int limite) {
       }
 
-      private String normalizar(String valor) {''',
-              "Chaves do cache estratégico"
-          )
+      private String normalizar(String valor) {''', "Chaves do cache estratégico")
           analysis_path.write_text(analysis, encoding="utf-8")
 
-          # 4. Evitar chamadas duplicadas no navegador e reduzir o debounce visual.
           js_path = Path("src/main/resources/static/js/next-pick.js")
           js = js_path.read_text(encoding="utf-8")
-          js = replace_once(
-              js,
-              '''let resultadoAtualProximoPick = null;
-      let abaAnaliseAtual = "now";''',
-              '''let resultadoAtualProximoPick = null;
+          js = replace_once(js, '''let resultadoAtualProximoPick = null;
+      let abaAnaliseAtual = "now";''', '''let resultadoAtualProximoPick = null;
       let abaAnaliseAtual = "now";
       let controladorConsultaProximoPick = null;
-      let assinaturaUltimaConsultaProximoPick = null;''',
-              "Estado de cancelamento da consulta"
-          )
+      let assinaturaUltimaConsultaProximoPick = null;''', "Estado de cancelamento da consulta")
           js = replace_once(js, '        180\n', '        90\n', "Debounce da recomendação")
-          old_fetch_start = '''async function consultarRecomendacaoProximoPick() {
+          js = replace_once(js, '''async function consultarRecomendacaoProximoPick() {
           const versaoAtual = ++versaoConsultaProximoPick;
           renderizarCarregamentoProximoPick();
 
@@ -315,18 +207,12 @@ jobs:
                       },
                       body: JSON.stringify(montarRequestProximoPick())
                   }
-              );'''
-          new_fetch_start = '''async function consultarRecomendacaoProximoPick() {
+              );''', '''async function consultarRecomendacaoProximoPick() {
           const request = montarRequestProximoPick();
           const assinatura = JSON.stringify(request);
-
-          if (
-              assinatura === assinaturaUltimaConsultaProximoPick
-                  && resultadoAtualProximoPick
-          ) {
+          if (assinatura === assinaturaUltimaConsultaProximoPick && resultadoAtualProximoPick) {
               return;
           }
-
           const versaoAtual = ++versaoConsultaProximoPick;
           controladorConsultaProximoPick?.abort();
           controladorConsultaProximoPick = new AbortController();
@@ -343,27 +229,20 @@ jobs:
                       body: assinatura,
                       signal: controladorConsultaProximoPick.signal
                   }
-              );'''
-          js = replace_once(js, old_fetch_start, new_fetch_start, "Cancelamento de fetch duplicado")
-          js = replace_once(
-              js,
-              '''          resultadoAtualProximoPick = resultado;
+              );''', "Cancelamento de fetch duplicado")
+          js = replace_once(js, '''          resultadoAtualProximoPick = resultado;
           renderizarRecomendacaoProximoPick(resultado);
       } catch (erro) {
-          if (versaoAtual !== versaoConsultaProximoPick) {''',
-              '''          assinaturaUltimaConsultaProximoPick = assinatura;
+          if (versaoAtual !== versaoConsultaProximoPick) {''', '''          assinaturaUltimaConsultaProximoPick = assinatura;
           resultadoAtualProximoPick = resultado;
           renderizarRecomendacaoProximoPick(resultado);
       } catch (erro) {
           if (erro.name === "AbortError") {
               return;
           }
-          if (versaoAtual !== versaoConsultaProximoPick) {''',
-              "Tratamento de consulta cancelada"
-          )
+          if (versaoAtual !== versaoConsultaProximoPick) {''', "Tratamento de consulta cancelada")
           js_path.write_text(js, encoding="utf-8")
 
-          # 5. Atualizar e ampliar os testes de regressão.
           hero_test_path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiServiceTest.java")
           hero_test = hero_test_path.read_text(encoding="utf-8")
           hero_test = hero_test.replace('void deveCadastrarOsVinteHeroisAtuaisDaFarmLane()', 'void deveCadastrarOsDezenoveHeroisAtuaisDaFarmLane()')
@@ -377,57 +256,30 @@ jobs:
 
           infer_test_path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesServiceTest.java")
           infer_test = infer_test_path.read_text(encoding="utf-8")
-          infer_test = replace_once(
-              infer_test,
-              'import static org.junit.jupiter.api.Assertions.assertThrows;\n',
-              'import static org.junit.jupiter.api.Assertions.assertThrows;\nimport static org.junit.jupiter.api.Assertions.assertSame;\n',
-              "Import assertSame"
-          )
-          infer_test = replace_once(
-              infer_test,
-              '''    @Test
-      void deveRejeitarMesmoHeroiNosDoisLados() {''',
-              '''    @Test
+          infer_test = replace_once(infer_test, 'import static org.junit.jupiter.api.Assertions.assertThrows;\n', 'import static org.junit.jupiter.api.Assertions.assertThrows;\nimport static org.junit.jupiter.api.Assertions.assertSame;\n', "Import assertSame")
+          infer_test = replace_once(infer_test, '''    @Test
+      void deveRejeitarMesmoHeroiNosDoisLados() {''', '''    @Test
       void deveReutilizarInferenciaQuandoODraftNaoMudou() {
-          InferenciaFuncoesRequest request = request(
-              List.of(20L, 14L),
-              List.of(17L)
-          );
-
+          InferenciaFuncoesRequest request = request(List.of(20L, 14L), List.of(17L));
           InferenciaFuncoesResponse primeira = service.inferir(request);
           InferenciaFuncoesResponse segunda = service.inferir(request);
-
           assertSame(primeira, segunda);
       }
 
       @Test
-      void deveRejeitarMesmoHeroiNosDoisLados() {''',
-              "Teste do cache de inferência"
-          )
+      void deveRejeitarMesmoHeroiNosDoisLados() {''', "Teste do cache de inferência")
           infer_test_path.write_text(infer_test, encoding="utf-8")
 
           role_test_path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickPorFuncaoServiceTest.java")
           role_test = role_test_path.read_text(encoding="utf-8")
-          role_test = replace_once(
-              role_test,
-              'import static org.junit.jupiter.api.Assertions.assertNotNull;\n',
-              'import static org.junit.jupiter.api.Assertions.assertNotNull;\nimport static org.junit.jupiter.api.Assertions.assertNotEquals;\n',
-              "Import assertNotEquals"
-          )
-          role_test = replace_once(
-              role_test,
-              '''        assertNotNull(resposta.recomendacaoPrincipal());
+          role_test = replace_once(role_test, 'import static org.junit.jupiter.api.Assertions.assertNotNull;\n', 'import static org.junit.jupiter.api.Assertions.assertNotNull;\nimport static org.junit.jupiter.api.Assertions.assertNotEquals;\n', "Import assertNotEquals")
+          role_test = replace_once(role_test, '''        assertNotNull(resposta.recomendacaoPrincipal());
 
-          Stream<RecomendacaoPickResponse> recomendacoes = Stream.concat(''',
-              '''        assertNotNull(resposta.recomendacaoPrincipal());
+          Stream<RecomendacaoPickResponse> recomendacoes = Stream.concat(''', '''        assertNotNull(resposta.recomendacaoPrincipal());
           assertNotEquals("Chicha", resposta.recomendacaoPrincipal().heroi());
-          assertTrue(resposta.alternativas().stream().noneMatch(
-              recomendacao -> recomendacao.heroi().equals("Chicha")
-          ));
+          assertTrue(resposta.alternativas().stream().noneMatch(recomendacao -> recomendacao.heroi().equals("Chicha")));
 
-          Stream<RecomendacaoPickResponse> recomendacoes = Stream.concat(''',
-              "Regressão da Chicha na Farm Lane"
-          )
+          Stream<RecomendacaoPickResponse> recomendacoes = Stream.concat(''', "Regressão da Chicha na Farm Lane")
           role_test_path.write_text(role_test, encoding="utf-8")
           PY
 
@@ -440,13 +292,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/temp-optimize-analysis.yml
-          git add \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiService.java \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesService.java \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaComposicaoService.java \
-            src/main/resources/static/js/next-pick.js \
-            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiServiceTest.java \
-            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesServiceTest.java \
-            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickPorFuncaoServiceTest.java
+          git add src/main/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiService.java src/main/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesService.java src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaComposicaoService.java src/main/resources/static/js/next-pick.js src/test/java/br/com/carlosdaniel/hokdraftcoach/service/HeroiServiceTest.java src/test/java/br/com/carlosdaniel/hokdraftcoach/service/InferenciaFuncoesServiceTest.java src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickPorFuncaoServiceTest.java
           git commit -m "perf: speed up draft analysis and correct Chicha roles"
           git push origin HEAD:feat/backend-draft-engine
+
+# trigger: 2
