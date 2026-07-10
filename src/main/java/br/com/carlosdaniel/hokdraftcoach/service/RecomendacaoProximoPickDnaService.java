@@ -8,6 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,7 @@ import br.com.carlosdaniel.hokdraftcoach.model.TipoOpcaoPick;
 public class RecomendacaoProximoPickDnaService {
 
     private static final int LIMITE_ALTERNATIVAS = 2;
+    private static final int LIMITE_CACHE_RECOMENDACOES = 128;
 
     private final RecomendacaoProximoPickService recomendacaoBase;
     private final HeroiService heroiService;
@@ -39,6 +42,10 @@ public class RecomendacaoProximoPickDnaService {
     private final SegurancaBlindPickService segurancaBlindPickService;
     private final ProjecaoRespostaInimigaService projecaoService;
     private final ExplicacaoRecomendacaoService explicacaoService;
+    private final ConcurrentMap<
+        RecomendacaoProximoPickRequest,
+        RecomendacaoProximoPickResponse
+    > cacheRecomendacoes = new ConcurrentHashMap<>();
 
     public RecomendacaoProximoPickDnaService(
         RecomendacaoProximoPickService recomendacaoBase,
@@ -57,6 +64,22 @@ public class RecomendacaoProximoPickDnaService {
     }
 
     public RecomendacaoProximoPickResponse recomendar(
+        RecomendacaoProximoPickRequest request
+    ) {
+        RecomendacaoProximoPickRequest chave = copiarRequest(request);
+        if (
+            cacheRecomendacoes.size() >= LIMITE_CACHE_RECOMENDACOES
+                && !cacheRecomendacoes.containsKey(chave)
+        ) {
+            cacheRecomendacoes.clear();
+        }
+        return cacheRecomendacoes.computeIfAbsent(
+            chave,
+            this::calcularRecomendacao
+        );
+    }
+
+    private RecomendacaoProximoPickResponse calcularRecomendacao(
         RecomendacaoProximoPickRequest request
     ) {
         RecomendacaoProximoPickRequest requestAlvo =
@@ -557,6 +580,20 @@ public class RecomendacaoProximoPickDnaService {
             base.alternativas(),
             List.of(),
             base.avisos()
+        );
+    }
+
+    private RecomendacaoProximoPickRequest copiarRequest(
+        RecomendacaoProximoPickRequest request
+    ) {
+        return new RecomendacaoProximoPickRequest(
+            request.meuLado(),
+            request.minhaOrdem(),
+            List.copyOf(request.bansAzul()),
+            List.copyOf(request.bansVermelho()),
+            List.copyOf(request.picksAzul()),
+            List.copyOf(request.picksVermelho()),
+            List.copyOf(request.funcoesPreferidas())
         );
     }
 

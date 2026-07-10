@@ -2,6 +2,7 @@ package br.com.carlosdaniel.hokdraftcoach.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -127,6 +128,27 @@ class IntegracaoDnaMotorDraftTest {
                     && recomendacao.componentes().containsKey("antiSinergia")
                     && recomendacao.componentes().containsKey("respostaAmeaca")
         ));
+    }
+
+    @Test
+    void deveReutilizarAnaliseDetalhadaParaOMesmoEstadoDoDraft() {
+        RecomendacaoProximoPickRequest request =
+            new RecomendacaoProximoPickRequest(
+                LadoDraft.AZUL,
+                1,
+                List.of(1L, 2L, 3L),
+                List.of(1L, 4L, 5L),
+                List.of(),
+                List.of(),
+                List.of(Rota.ROAMING)
+            );
+
+        RecomendacaoProximoPickResponse primeira =
+            proximoPickDnaService.recomendar(request);
+        RecomendacaoProximoPickResponse segunda =
+            proximoPickDnaService.recomendar(request);
+
+        assertSame(primeira, segunda);
     }
 
     @Test

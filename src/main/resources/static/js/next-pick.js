@@ -12,7 +12,8 @@ let temporizadorProximoPick = null;
 let versaoConsultaProximoPick = 0;
 let resultadoAtualProximoPick = null;
 let abaAnaliseAtual = "now";
-let controladorConsultaProximoPick = null;
+let controladorConsultaRapidaProximoPick = null;
+let controladorConsultaDetalhadaProximoPick = null;
 let assinaturaUltimaConsultaProximoPick = null;
 
 document.addEventListener("DOMContentLoaded", iniciarMotorProximoPick);
@@ -92,36 +93,51 @@ async function consultarRecomendacaoProximoPick() {
     }
 
     const versaoAtual = ++versaoConsultaProximoPick;
-    controladorConsultaProximoPick?.abort();
-    controladorConsultaProximoPick = new AbortController();
+    controladorConsultaRapidaProximoPick?.abort();
+    controladorConsultaDetalhadaProximoPick?.abort();
+    controladorConsultaRapidaProximoPick = new AbortController();
+    controladorConsultaDetalhadaProximoPick = new AbortController();
     renderizarCarregamentoProximoPick();
 
     try {
-        const resposta = await fetch(
-            "/api/draft/recomendar-proximo-pick",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: assinatura,
-                signal: controladorConsultaProximoPick.signal
-            }
+        const resultadoRapido = await solicitarRecomendacaoProximoPick(
+            "/api/draft/recomendar-proximo-pick/rapido",
+            assinatura,
+            controladorConsultaRapidaProximoPick.signal
         );
-
-        if (!resposta.ok) {
-            throw new Error(await extrairErroProximoPick(resposta));
-        }
-
-        const resultado = await resposta.json();
 
         if (versaoAtual !== versaoConsultaProximoPick) {
             return;
         }
 
         assinaturaUltimaConsultaProximoPick = assinatura;
-        resultadoAtualProximoPick = resultado;
-        renderizarRecomendacaoProximoPick(resultado);
+        resultadoAtualProximoPick = resultadoRapido;
+        renderizarRecomendacaoProximoPick(resultadoRapido);
+        renderizarRefinamentoProximoPick();
+
+        try {
+            const resultadoDetalhado = await solicitarRecomendacaoProximoPick(
+                "/api/draft/recomendar-proximo-pick",
+                assinatura,
+                controladorConsultaDetalhadaProximoPick.signal
+            );
+
+            if (versaoAtual !== versaoConsultaProximoPick) {
+                return;
+            }
+
+            resultadoAtualProximoPick = resultadoDetalhado;
+            renderizarRecomendacaoProximoPick(resultadoDetalhado);
+        } catch (erroDetalhado) {
+            if (erroDetalhado.name === "AbortError") {
+                return;
+            }
+            if (versaoAtual !== versaoConsultaProximoPick) {
+                return;
+            }
+
+            renderizarRecomendacaoProximoPick(resultadoAtualProximoPick);
+        }
     } catch (erro) {
         if (erro.name === "AbortError") {
             return;
@@ -133,6 +149,28 @@ async function consultarRecomendacaoProximoPick() {
         resultadoAtualProximoPick = null;
         renderizarErroProximoPick(erro.message);
     }
+}
+
+async function solicitarRecomendacaoProximoPick(url, assinatura, signal) {
+    const resposta = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: assinatura,
+        signal
+    });
+
+    if (!resposta.ok) {
+        throw new Error(await extrairErroProximoPick(resposta));
+    }
+
+    return resposta.json();
+}
+
+function renderizarRefinamentoProximoPick() {
+    statusProximoPick.textContent = "Refinando";
+    statusProximoPick.className = "coach-status coach-status--carregando";
 }
 
 function montarRequestProximoPick() {
@@ -179,7 +217,7 @@ function renderizarCarregamentoProximoPick() {
     conteudoProximoPick.innerHTML = `
         <div class="coach-carregando">
             <span class="coach-carregando__circulo"></span>
-            Recalculando necessidades, ameaças, projeções e respostas possíveis...
+            Calculando a recomendação inicial...
         </div>
     `;
 }
