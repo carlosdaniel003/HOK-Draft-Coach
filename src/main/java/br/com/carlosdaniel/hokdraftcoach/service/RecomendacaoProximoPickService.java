@@ -139,31 +139,29 @@ public class RecomendacaoProximoPickService {
                 List.of(),
                 List.of()
             );
+        }        Integer ordemAlvoAliada = proximaOrdemAliada(request);
+        if (ordemAlvoAliada == null) {
+            return semRecomendacao(
+                "EQUIPE_ALIADA_COMPLETA",
+                "Os cinco picks da sua equipe já foram registrados.",
+                request,
+                inferencia,
+                rodadaAtual.lado(),
+                rodadaAtual.slots(),
+                List.of(
+                    "Acompanhe os picks inimigos restantes e o plano final da composição."
+                )
+            );
         }
 
-        Integer ordemAlvoAliada = proximaOrdemAliada(request);
-if (ordemAlvoAliada == null) {
-    return semRecomendacao(
-        "EQUIPE_ALIADA_COMPLETA",
-        "Os cinco picks da sua equipe já foram registrados.",
-        request,
-        inferencia,
-        rodadaAtual.lado(),
-        rodadaAtual.slots(),
-        List.of(
-            "Acompanhe os picks inimigos restantes e o plano final da composição."
-        )
-    );
-}
+        boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
+            request.minhaOrdem()
+        ) && !slotJaPreenchido(request);
+        List<Rota> funcoesAlvo = recomendacaoParaUsuario
+            ? request.funcoesPreferidas()
+            : List.of();
 
-boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
-    request.minhaOrdem()
-) && !slotJaPreenchido(request);
-List<Rota> funcoesAlvo = recomendacaoParaUsuario
-    ? request.funcoesPreferidas()
-    : List.of();
-
-InferenciaEquipeResponse aliados = equipe(
+        InferenciaEquipeResponse aliados = equipe(
             inferencia,
             request.meuLado()
         );
@@ -233,31 +231,30 @@ InferenciaEquipeResponse aliados = equipe(
             .stream()
             .skip(1)
             .limit(LIMITE_ALTERNATIVAS)
-            .toList();
-        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
-boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
-String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
-String estadoDraft = ehMinhaVez
-    ? "MINHA_VEZ"
-    : vezAliada
-        ? "VEZ_ALIADA"
-        : "AGUARDANDO_INIMIGO";
-String mensagem = switch (estadoDraft) {
-    case "MINHA_VEZ" ->
-        "É sua vez. A melhor escolha agora é "
-            + principal.heroi() + ".";
-    case "VEZ_ALIADA" ->
-        "É a vez da sua equipe. Para " + slotAlvo
-            + ", a melhor escolha é " + principal.heroi() + ".";
-    default ->
-        "O inimigo está escolhendo. Planejamento para "
-            + slotAlvo + ": " + principal.heroi()
-            + " lidera entre as opções aliadas.";
-};
+            .toList();        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+        boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
+        String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
+        String estadoDraft = ehMinhaVez
+            ? "MINHA_VEZ"
+            : vezAliada
+                ? "VEZ_ALIADA"
+                : "AGUARDANDO_INIMIGO";
+        String mensagem = switch (estadoDraft) {
+            case "MINHA_VEZ" ->
+                "É sua vez. A melhor escolha agora é "
+                    + principal.heroi() + ".";
+            case "VEZ_ALIADA" ->
+                "É a vez da sua equipe. Para " + slotAlvo
+                    + ", a melhor escolha é " + principal.heroi() + ".";
+            default ->
+                "O inimigo está escolhendo. Planejamento para "
+                    + slotAlvo + ": " + principal.heroi()
+                    + " lidera entre as opções aliadas.";
+        };
 
-return new RecomendacaoProximoPickResponse(
-    VERSAO_MOTOR,
-    estadoDraft,
+        return new RecomendacaoProximoPickResponse(
+            VERSAO_MOTOR,
+            estadoDraft,
             mensagem,
             ehMinhaVez,
             meuSlot(request),
@@ -900,30 +897,28 @@ return new RecomendacaoProximoPickResponse(
         }
 
         return null;
-    }
+    }    private Integer proximaOrdemAliada(
+        RecomendacaoProximoPickRequest request
+    ) {
+        Map<Integer, Long> preenchidos = mapaPicks(
+            picks(request, request.meuLado())
+        );
 
-    private Integer proximaOrdemAliada(
-    RecomendacaoProximoPickRequest request
-) {
-    Map<Integer, Long> preenchidos = mapaPicks(
-        picks(request, request.meuLado())
-    );
-
-    for (RodadaPick rodada : RODADAS) {
-        if (rodada.lado() != request.meuLado()) {
-            continue;
-        }
-        for (Integer ordem : rodada.ordens()) {
-            if (!preenchidos.containsKey(ordem)) {
-                return ordem;
+        for (RodadaPick rodada : RODADAS) {
+            if (rodada.lado() != request.meuLado()) {
+                continue;
+            }
+            for (Integer ordem : rodada.ordens()) {
+                if (!preenchidos.containsKey(ordem)) {
+                    return ordem;
+                }
             }
         }
+
+        return null;
     }
 
-    return null;
-}
-
-private boolean slotJaPreenchido(
+    private boolean slotJaPreenchido(
         RecomendacaoProximoPickRequest request
     ) {
         return picks(request, request.meuLado())

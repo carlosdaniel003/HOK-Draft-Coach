@@ -58,21 +58,20 @@ public class RecomendacaoProximoPickDnaService {
 
     public RecomendacaoProximoPickResponse recomendar(
         RecomendacaoProximoPickRequest request
-    ) {
-        RecomendacaoProximoPickRequest requestAlvo =
-    requestParaProximoAliado(request);
-List<String> aliados = nomes(picksAliados(request));
-List<String> inimigos = nomes(picksInimigos(request));
-ContextoDraftResponse contexto = segurancaBlindPickService.contexto(
-    requestAlvo
-);
-DiagnosticoComposicaoResponse diagnostico = aliados.isEmpty()
-    ? null
-    : dnaComposicaoService.diagnosticar(aliados, inimigos);
+    ) {        RecomendacaoProximoPickRequest requestAlvo =
+            requestParaProximoAliado(request);
+        List<String> aliados = nomes(picksAliados(request));
+        List<String> inimigos = nomes(picksInimigos(request));
+        ContextoDraftResponse contexto = segurancaBlindPickService.contexto(
+            requestAlvo
+        );
+        DiagnosticoComposicaoResponse diagnostico = aliados.isEmpty()
+            ? null
+            : dnaComposicaoService.diagnosticar(aliados, inimigos);
 
-RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
-    request
-);
+        RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
+            request
+        );
         if (base.recomendacaoPrincipal() == null) {
             return anexarDiagnostico(base, diagnostico, contexto);
         }
@@ -125,18 +124,18 @@ RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
             .distinct()
             .limit(LIMITE_ALTERNATIVAS)
             .toList();        String mensagem = switch (base.estadoDraft()) {
-    case "MINHA_VEZ" ->
-        "É sua vez. A melhor escolha geral é "
-            + principal.heroi()
-            + "; a resposta também inclui a opção mais segura e a de maior impacto.";
-    case "VEZ_ALIADA" ->
-        "É a vez da sua equipe. " + principal.heroi()
-            + " é a melhor escolha geral para o próximo pick aliado.";
-    case "AGUARDANDO_INIMIGO" ->
-        "O inimigo está escolhendo. " + principal.heroi()
-            + " lidera o planejamento para a próxima resposta aliada.";
-    default -> base.mensagem();
-};
+            case "MINHA_VEZ" ->
+                "É sua vez. A melhor escolha geral é "
+                    + principal.heroi()
+                    + "; a resposta também inclui a opção mais segura e a de maior impacto.";
+            case "VEZ_ALIADA" ->
+                "É a vez da sua equipe. " + principal.heroi()
+                    + " é a melhor escolha geral para o próximo pick aliado.";
+            case "AGUARDANDO_INIMIGO" ->
+                "O inimigo está escolhendo. " + principal.heroi()
+                    + " lidera o planejamento para a próxima resposta aliada.";
+            default -> base.mensagem();
+        };
         List<String> avisos = new ArrayList<>(base.avisos());
         avisos.add(
             "DNA, curva de poder, sinergias, anti-sinergias, ameaças, ordem do draft e respostas inimigas projetadas foram avaliados."
@@ -556,44 +555,42 @@ RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
             List.of(),
             base.avisos()
         );
-    }
-
-    private RecomendacaoProximoPickRequest requestParaProximoAliado(
-    RecomendacaoProximoPickRequest request
-) {
-    if (request.meuLado() == null) {
-        return request;
-    }
-
-    List<PickSemFuncaoRequest> aliados = picksAliados(request);
-    Integer ordemAlvo = null;
-    for (int ordem = 1; ordem <= 5; ordem += 1) {
-        int ordemAtual = ordem;
-        boolean preenchido = aliados.stream()
-            .anyMatch(pick -> pick.ordem().equals(ordemAtual));
-        if (!preenchido) {
-            ordemAlvo = ordem;
-            break;
+    }    private RecomendacaoProximoPickRequest requestParaProximoAliado(
+        RecomendacaoProximoPickRequest request
+    ) {
+        if (request.meuLado() == null) {
+            return request;
         }
+
+        List<PickSemFuncaoRequest> aliados = picksAliados(request);
+        Integer ordemAlvo = null;
+        for (int ordem = 1; ordem <= 5; ordem += 1) {
+            int ordemAtual = ordem;
+            boolean preenchido = aliados.stream()
+                .anyMatch(pick -> pick.ordem().equals(ordemAtual));
+            if (!preenchido) {
+                ordemAlvo = ordem;
+                break;
+            }
+        }
+
+        if (ordemAlvo == null) {
+            return request;
+        }
+
+        boolean alvoEhUsuario = ordemAlvo.equals(request.minhaOrdem());
+        return new RecomendacaoProximoPickRequest(
+            request.meuLado(),
+            ordemAlvo,
+            request.bansAzul(),
+            request.bansVermelho(),
+            request.picksAzul(),
+            request.picksVermelho(),
+            alvoEhUsuario ? request.funcoesPreferidas() : List.of()
+        );
     }
 
-    if (ordemAlvo == null) {
-        return request;
-    }
-
-    boolean alvoEhUsuario = ordemAlvo.equals(request.minhaOrdem());
-    return new RecomendacaoProximoPickRequest(
-        request.meuLado(),
-        ordemAlvo,
-        request.bansAzul(),
-        request.bansVermelho(),
-        request.picksAzul(),
-        request.picksVermelho(),
-        alvoEhUsuario ? request.funcoesPreferidas() : List.of()
-    );
-}
-
-private List<PickSemFuncaoRequest> picksAliados(
+    private List<PickSemFuncaoRequest> picksAliados(
         RecomendacaoProximoPickRequest request
     ) {
         if (request.meuLado() == null || request.meuLado() == LadoDraft.AZUL) {
