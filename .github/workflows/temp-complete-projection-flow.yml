@@ -1,0 +1,305 @@
+name: Temporary complete projection flow
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-complete-projection-flow.yml
+
+permissions:
+  contents: write
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Complete projections and normalize reviewed blocks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def sub_once(text, pattern, replacement, label, flags=0):
+              text, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: esperado 1 bloco, encontrado {count}")
+              return text
+
+          service_path = Path('src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java')
+          service = service_path.read_text(encoding='utf-8')
+
+          allied_block = '''        Integer ordemAlvoAliada = proximaOrdemAliada(request);
+          if (ordemAlvoAliada == null) {
+              return semRecomendacao(
+                  "EQUIPE_ALIADA_COMPLETA",
+                  "Os cinco picks da sua equipe já foram registrados.",
+                  request,
+                  inferencia,
+                  rodadaAtual.lado(),
+                  rodadaAtual.slots(),
+                  List.of(
+                      "Acompanhe os picks inimigos restantes e o plano final da composição."
+                  )
+              );
+          }
+
+          boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
+              request.minhaOrdem()
+          ) && !slotJaPreenchido(request);
+          List<Rota> funcoesAlvo = recomendacaoParaUsuario
+              ? request.funcoesPreferidas()
+              : List.of();
+
+          InferenciaEquipeResponse aliados = equipe('''
+          service = sub_once(
+              service,
+              r'        Integer ordemAlvoAliada = proximaOrdemAliada\(request\);.*?        InferenciaEquipeResponse aliados = equipe\(',
+              allied_block,
+              'Bloco do próximo aliado',
+              re.S,
+          )
+
+          state_block = '''        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+          boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
+          String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
+          String estadoDraft = ehMinhaVez
+              ? "MINHA_VEZ"
+              : vezAliada
+                  ? "VEZ_ALIADA"
+                  : "AGUARDANDO_INIMIGO";
+          String mensagem = switch (estadoDraft) {
+              case "MINHA_VEZ" ->
+                  "É sua vez. A melhor escolha agora é "
+                      + principal.heroi() + ".";
+              case "VEZ_ALIADA" ->
+                  "É a vez da sua equipe. Para " + slotAlvo
+                      + ", a melhor escolha é " + principal.heroi() + ".";
+              default ->
+                  "O inimigo está escolhendo. Planejamento para "
+                      + slotAlvo + ": " + principal.heroi()
+                      + " lidera entre as opções aliadas.";
+          };
+
+          return new RecomendacaoProximoPickResponse(
+              VERSAO_MOTOR,
+              estadoDraft,'''
+          service = sub_once(
+              service,
+              r'        boolean vezAliada = rodadaAtual\.lado\(\) == request\.meuLado\(\);.*?        return new RecomendacaoProximoPickResponse\(\s*VERSAO_MOTOR,\s*estadoDraft,',
+              state_block,
+              'Estado e mensagem da recomendação',
+              re.S,
+          )
+
+          helper_block = '''    private Integer proximaOrdemAliada(
+              RecomendacaoProximoPickRequest request
+          ) {
+              Map<Integer, Long> preenchidos = mapaPicks(
+                  picks(request, request.meuLado())
+              );
+
+              for (RodadaPick rodada : RODADAS) {
+                  if (rodada.lado() != request.meuLado()) {
+                      continue;
+                  }
+                  for (Integer ordem : rodada.ordens()) {
+                      if (!preenchidos.containsKey(ordem)) {
+                          return ordem;
+                      }
+                  }
+              }
+
+              return null;
+          }
+
+          private boolean slotJaPreenchido('''
+          service = sub_once(
+              service,
+              r'    private Integer proximaOrdemAliada\(.*?    private boolean slotJaPreenchido\(',
+              helper_block,
+              'Helper do próximo aliado',
+              re.S,
+          )
+          service_path.write_text(service, encoding='utf-8')
+
+          dna_path = Path('src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java')
+          dna = dna_path.read_text(encoding='utf-8')
+
+          initial_block = '''        RecomendacaoProximoPickRequest requestAlvo =
+              requestParaProximoAliado(request);
+          List<String> aliados = nomes(picksAliados(request));
+          List<String> inimigos = nomes(picksInimigos(request));
+          ContextoDraftResponse contexto = segurancaBlindPickService.contexto(
+              requestAlvo
+          );
+          DiagnosticoComposicaoResponse diagnostico = aliados.isEmpty()
+              ? null
+              : dnaComposicaoService.diagnosticar(aliados, inimigos);
+
+          RecomendacaoProximoPickResponse base = recomendacaoBase.recomendar(
+              request
+          );'''
+          dna = sub_once(
+              dna,
+              r'        RecomendacaoProximoPickRequest requestAlvo = requestParaProximoAliado\(.*?        RecomendacaoProximoPickResponse base = recomendacaoBase\.recomendar\(\s*request\s*\);',
+              initial_block,
+              'Contexto inicial do DNA',
+              re.S,
+          )
+
+          old_condition = '        if (diagnostico == null || base.recomendacaoPrincipal() == null) {'
+          new_condition = '        if (base.recomendacaoPrincipal() == null) {'
+          if dna.count(old_condition) != 1:
+              raise SystemExit('Condição de interrupção do DNA não encontrada')
+          dna = dna.replace(old_condition, new_condition, 1)
+
+          dna_map = '''        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =
+              aliados.isEmpty()
+                  ? Map.of()
+                  : carregarDnaPorRota(candidatas, aliados, inimigos);'''
+          dna = sub_once(
+              dna,
+              r'        Map<Rota, Map<String, RecomendacaoDnaResponse>> dnaPorRota =\s*carregarDnaPorRota\(candidatas, aliados, inimigos\);',
+              dna_map,
+              'DNA opcional no primeiro pick',
+              re.S,
+          )
+
+          switch_block = '''        String mensagem = switch (base.estadoDraft()) {
+              case "MINHA_VEZ" ->
+                  "É sua vez. A melhor escolha geral é "
+                      + principal.heroi()
+                      + "; a resposta também inclui a opção mais segura e a de maior impacto.";
+              case "VEZ_ALIADA" ->
+                  "É a vez da sua equipe. " + principal.heroi()
+                      + " é a melhor escolha geral para o próximo pick aliado.";
+              case "AGUARDANDO_INIMIGO" ->
+                  "O inimigo está escolhendo. " + principal.heroi()
+                      + " lidera o planejamento para a próxima resposta aliada.";
+              default -> base.mensagem();
+          };'''
+          dna = sub_once(
+              dna,
+              r'        String mensagem = switch \(base\.estadoDraft\(\)\) \{.*?        \};',
+              switch_block,
+              'Mensagens do orquestrador DNA',
+              re.S,
+          )
+
+          helper_dna = '''    private RecomendacaoProximoPickRequest requestParaProximoAliado(
+              RecomendacaoProximoPickRequest request
+          ) {
+              if (request.meuLado() == null) {
+                  return request;
+              }
+
+              List<PickSemFuncaoRequest> aliados = picksAliados(request);
+              Integer ordemAlvo = null;
+              for (int ordem = 1; ordem <= 5; ordem += 1) {
+                  int ordemAtual = ordem;
+                  boolean preenchido = aliados.stream()
+                      .anyMatch(pick -> pick.ordem().equals(ordemAtual));
+                  if (!preenchido) {
+                      ordemAlvo = ordem;
+                      break;
+                  }
+              }
+
+              if (ordemAlvo == null) {
+                  return request;
+              }
+
+              boolean alvoEhUsuario = ordemAlvo.equals(request.minhaOrdem());
+              return new RecomendacaoProximoPickRequest(
+                  request.meuLado(),
+                  ordemAlvo,
+                  request.bansAzul(),
+                  request.bansVermelho(),
+                  request.picksAzul(),
+                  request.picksVermelho(),
+                  alvoEhUsuario ? request.funcoesPreferidas() : List.of()
+              );
+          }
+
+          private List<PickSemFuncaoRequest> picksAliados('''
+          dna = sub_once(
+              dna,
+              r'    private RecomendacaoProximoPickRequest requestParaProximoAliado\(.*?    private List<PickSemFuncaoRequest> picksAliados\(',
+              helper_dna,
+              'Helper do contexto DNA',
+              re.S,
+          )
+          dna_path.write_text(dna, encoding='utf-8')
+
+          test_path = Path('src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java')
+          test = test_path.read_text(encoding='utf-8')
+          marker = '''    @Test
+          void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {
+          '''
+          new_test = '''    @Test
+          void deveProjetarRespostasInimigasDesdeOPrimeiroPick() {
+              RecomendacaoProximoPickRequest request =
+                  new RecomendacaoProximoPickRequest(
+                      LadoDraft.AZUL,
+                      1,
+                      List.of(1L, 2L, 3L),
+                      List.of(1L, 4L, 5L),
+                      List.of(),
+                      List.of(),
+                      List.of(Rota.ROAMING)
+                  );
+
+              RecomendacaoProximoPickResponse resposta =
+                  proximoPickDnaService.recomendar(request);
+
+              assertEquals("MINHA_VEZ", resposta.estadoDraft());
+              assertNotNull(resposta.recomendacaoPrincipal());
+              assertEquals(3, resposta.opcoesEstrategicas().size());
+              assertTrue(
+                  resposta.opcoesEstrategicas().stream().allMatch(
+                      opcao -> opcao.projecao() != null
+                          && !opcao.projecao().respostasProvaveis().isEmpty()
+                  )
+              );
+          }
+
+          @Test
+          void deveManterDnaEProjecoesDepoisDoPickDoUsuario() {
+          '''
+          if test.count(marker) != 1:
+              raise SystemExit('Marcador do teste integrado não encontrado')
+          test = test.replace(marker, new_test, 1)
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Validate JavaScript
+        run: node --check src/main/resources/static/js/next-pick.js
+
+      - name: Run Maven tests
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Publish complete flow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temp-complete-projection-flow.yml
+          git add \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+          git commit -m "fix: project enemy responses from the first pick"
+          git push origin HEAD:feat/backend-draft-engine
