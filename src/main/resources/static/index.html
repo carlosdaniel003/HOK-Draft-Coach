@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Assistente estratégico de draft para Honor of Kings">
+    <meta name="description" content="Assistente estratégico para o modo ranqueada de Honor of Kings">
     <meta name="theme-color" content="#07101f">
-    <title>HOK Draft Assist</title>
+    <title>HOK Draft Assist · Modo Ranqueada</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/game-draft.css">
     <link rel="stylesheet" href="/css/role-inference.css">
     <link rel="stylesheet" href="/css/next-pick.css">
     <script src="/js/app.js" defer></script>
+    <script src="/js/ranked-mode.js" defer></script>
     <script src="/js/next-pick.js" defer></script>
 </head>
 <body>
@@ -19,7 +20,7 @@
             <span class="draft-brand__mark">H</span>
             <span>
                 <strong>DRAFT ASSIST</strong>
-                <small>HONOR OF KINGS</small>
+                <small>MODO RANQUEADA · HONOR OF KINGS</small>
             </span>
         </div>
 
@@ -83,14 +84,14 @@
                     <span class="draft-phase-panel__icon">⚔</span>
                     <span>
                         <small>FASE ATUAL</small>
-                        <strong id="fase-draft">Fase de bans</strong>
+                        <strong id="fase-draft">Bans simultâneos</strong>
                     </span>
                 </div>
 
                 <div class="draft-phase-panel__action">
                     <small>PRÓXIMA AÇÃO</small>
-                    <strong id="proxima-acao">Registre os três bans de cada equipe</strong>
-                    <p id="descricao-acao">Os picks serão liberados depois dos seis bans.</p>
+                    <strong id="proxima-acao">Registre os seis bans revelados</strong>
+                    <p id="descricao-acao">Os seis bans podem ser inseridos rapidamente em sequência.</p>
                 </div>
 
                 <div class="draft-phase-panel__progress">
@@ -155,8 +156,8 @@
                 <div class="technical-drawer__content">
                     <article class="technical-card">
                         <span>Próxima movimentação</span>
-                        <strong id="resumo-proxima-acao">Fase de bans</strong>
-                        <p id="resumo-proxima-descricao">Preencha os bans disponíveis dos dois lados.</p>
+                        <strong id="resumo-proxima-acao">Bans simultâneos</strong>
+                        <p id="resumo-proxima-descricao">Preencha os seis bans revelados pelos dois lados.</p>
                     </article>
                     <article class="technical-card">
                         <span>Minha posição no draft</span>
@@ -204,7 +205,7 @@
                 <div>
                     <span id="modal-etiqueta" class="modal__etiqueta">Seleção de herói</span>
                     <h2 id="modal-titulo">Escolha um herói</h2>
-                    <p id="modal-descricao">Heróis banidos ou já escolhidos ficam indisponíveis.</p>
+                    <p id="modal-descricao">Durante os bans, o mesmo herói pode aparecer uma vez em cada equipe.</p>
                 </div>
                 <button id="botao-fechar-modal" class="botao-fechar" type="button" aria-label="Fechar seleção">×</button>
             </div>
@@ -225,7 +226,7 @@
 
             <div class="modal__rodape">
                 <button id="botao-remover-heroi" class="botao-perigo oculto" type="button">Limpar este slot</button>
-                <span>Escolha rápida: pesquise, filtre e selecione o herói.</span>
+                <span>No modo ranqueada, os seis bans são revelados juntos e podem repetir entre as equipes.</span>
             </div>
         </section>
     </div>
