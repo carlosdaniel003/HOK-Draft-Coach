@@ -1,0 +1,66 @@
+name: Temporary diagnose minimal live draft diff
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-diagnose-minimal-diff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - name: Executar script em modo diagnóstico
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(
+              '.github/workflows/temp-minimize-live-draft-diff.yml'
+          ).read_text(encoding='utf-8')
+          start_marker = "          python3 - <<'PY'\n"
+          start = workflow.index(start_marker) + len(start_marker)
+          end = workflow.index("          PY\n", start)
+          lines = workflow[start:end].splitlines()
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in lines
+          ) + '\n'
+          Path('/tmp/minimal-live-draft.py').write_text(
+              script,
+              encoding='utf-8'
+          )
+          PY
+
+          set +e
+          git checkout 90eb246be8aca279bd4fbd09242d4cf7fd416051 -- \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java \
+            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+          python3 /tmp/minimal-live-draft.py > /tmp/minimal-diff-output.txt 2>&1
+          status=$?
+          echo "status=$status" >> /tmp/minimal-diff-output.txt
+          git reset --hard HEAD
+          cp /tmp/minimal-diff-output.txt minimal-diff-output.txt
+
+      - name: Publicar diagnóstico
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temp-diagnose-minimal-diff.yml
+          git add minimal-diff-output.txt
+          git commit -m "chore: capture minimal diff diagnostic"
+          git push origin HEAD:feat/backend-draft-engine
