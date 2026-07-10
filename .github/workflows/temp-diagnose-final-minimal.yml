@@ -1,0 +1,67 @@
+name: Temporary diagnose final minimal pass
+
+on:
+  push:
+    branches:
+      - feat/backend-draft-engine
+    paths:
+      - .github/workflows/temp-diagnose-final-minimal.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
+
+      - name: Executar finalizador em modo diagnóstico
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(
+              '.github/workflows/temp-finalize-minimal-live-draft.yml'
+          ).read_text(encoding='utf-8')
+          marker = "          python3 - <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("          PY\n", start)
+          lines = workflow[start:end].splitlines()
+          prep = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in lines
+          ) + '\n'
+          Path('/tmp/prepare-finalizer.py').write_text(prep, encoding='utf-8')
+          PY
+
+          set +e
+          python3 /tmp/prepare-finalizer.py > /tmp/final-minimal-output.txt 2>&1
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            git checkout 90eb246be8aca279bd4fbd09242d4cf7fd416051 -- \
+              src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickService.java \
+              src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java \
+              src/test/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickServiceTest.java \
+              src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java
+            python3 /tmp/minimal-live-draft-fixed.py >> /tmp/final-minimal-output.txt 2>&1
+            status=$?
+          fi
+          echo "status=$status" >> /tmp/final-minimal-output.txt
+          git reset --hard HEAD
+          cp /tmp/final-minimal-output.txt final-minimal-output.txt
+
+      - name: Publicar diagnóstico
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temp-diagnose-final-minimal.yml
+          git add final-minimal-output.txt
+          git commit -m "chore: capture final minimal pass output"
+          git push origin HEAD:feat/backend-draft-engine
