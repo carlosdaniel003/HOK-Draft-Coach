@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import br.com.carlosdaniel.hokdraftcoach.dto.PickSemFuncaoRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
+import br.com.carlosdaniel.hokdraftcoach.model.LadoDraft;
 
 @Service
 @Primary
@@ -48,7 +49,7 @@ public class RecomendacaoProximoPickPorFuncaoService
             return false;
         }
 
-        List<PickSemFuncaoRequest> aliados = request.meuLado().name().equals("AZUL")
+        List<PickSemFuncaoRequest> aliados = request.meuLado() == LadoDraft.AZUL
             ? request.picksAzul()
             : request.picksVermelho();
 
