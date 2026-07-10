@@ -234,33 +234,24 @@ function criarAbaAgora(resultado) {
     const condicaoInimiga = diagnostico?.condicoesVitoriaInimigas
         ?.find((condicao) => condicao.principal)
         ?? diagnostico?.condicoesVitoriaInimigas?.[0];
+    const contextoRotacao = obterContextoRotacao(resultado);
+    const opcaoPrincipal = opcoes[0];
 
     return `
         <div class="analysis-view">
+            ${criarResumoRotacao(contextoRotacao, resultado)}
             <div class="analysis-summary-grid">
                 <article class="analysis-summary-card analysis-summary-card--need">
                     <span class="analysis-summary-card__eyebrow">NECESSIDADE PRINCIPAL</span>
-                    <strong>${escaparProximoPick(
-                        necessidade?.titulo ?? "Aguardando mais picks aliados"
-                    )}</strong>
-                    <p>${escaparProximoPick(
-                        necessidade?.motivo
-                        ?? "O motor atualiza as necessidades conforme a composição é revelada."
-                    )}</p>
+                    <strong>${escaparProximoPick(necessidade?.titulo ?? "Aguardando mais picks aliados")}</strong>
+                    <p>${escaparProximoPick(necessidade?.motivo ?? "O motor atualiza as necessidades conforme a composição é revelada.")}</p>
                 </article>
-
                 <article class="analysis-summary-card analysis-summary-card--threat">
                     <span class="analysis-summary-card__eyebrow">MAIOR AMEAÇA INIMIGA</span>
-                    <strong>${escaparProximoPick(
-                        maiorAmeaca?.heroi ?? "Ainda não identificada"
-                    )}</strong>
-                    <p>${escaparProximoPick(
-                        maiorAmeaca?.motivos?.[0]
-                        ?? "Registre os picks inimigos para mapear ameaça, iniciador e habilitador."
-                    )}</p>
+                    <strong>${escaparProximoPick(maiorAmeaca?.heroi ?? "Ainda não identificada")}</strong>
+                    <p>${escaparProximoPick(maiorAmeaca?.motivos?.[0] ?? "Registre os picks inimigos para mapear ameaça, iniciador e habilitador.")}</p>
                 </article>
             </div>
-
             ${condicaoInimiga ? `
                 <article class="condition-card">
                     <span class="analysis-summary-card__eyebrow">CONDIÇÃO DE VITÓRIA INIMIGA</span>
@@ -268,20 +259,14 @@ function criarAbaAgora(resultado) {
                     <p>${escaparProximoPick(condicaoInimiga.descricao)}</p>
                 </article>
             ` : ""}
-
             <section class="recommendation-zone">
                 <div class="recommendation-zone__header">
-                    <span class="recommendation-zone__title">3 MELHORES OPÇÕES PARA VOCÊ</span>
-                    <small>${escaparProximoPick(
-                        resultado.contextoDraft?.prioridade
-                        ?? "As categorias mudam conforme a ordem do draft."
-                    )}</small>
+                    <span class="recommendation-zone__title">${contextoRotacao.ehMeuSlot ? "3 MELHORES OPÇÕES PARA VOCÊ" : "3 MELHORES OPÇÕES PARA O PRÓXIMO PICK ALIADO"}</span>
+                    <small>${escaparProximoPick(resultado.contextoDraft?.prioridade ?? "As categorias mudam conforme a ordem do próximo pick aliado.")}</small>
                 </div>
-                <div class="recommendation-grid">
-                    ${opcoes.map(criarCardOpcao).join("")}
-                </div>
+                <div class="recommendation-grid">${opcoes.map(criarCardOpcao).join("")}</div>
             </section>
-
+            ${criarPrevisaoInimigaAgora(opcaoPrincipal, contextoRotacao)}
             ${criarAlertasAgora(resultado)}
         </div>
     `;
@@ -399,6 +384,60 @@ function criarAlertasAgora(resultado) {
                     <li>${escaparProximoPick(alerta)}</li>
                 `).join("")}
             </ul>
+        </section>
+    `;
+}
+
+function obterContextoRotacao(resultado) {
+    const lado = document.querySelector("#meu-lado")?.value;
+    const ordemUsuario = Number(document.querySelector("#minha-ordem")?.value);
+    const slotAliado = encontrarProximoSlotAliado(lado);
+    const prefixoUsuario = LADOS[lado]?.prefixo;
+    const slotUsuario = prefixoUsuario && ordemUsuario ? `${prefixoUsuario}${ordemUsuario}` : null;
+    const ladoAtual = resultado.proximoLado === "AZUL" ? "Equipe Azul" : resultado.proximoLado === "VERMELHO" ? "Equipe Vermelha" : "A definir";
+    return {
+        ladoAtual,
+        slotsAtuais: resultado.proximosSlots ?? [],
+        slotAliado,
+        ehMeuSlot: Boolean(slotAliado && slotAliado === slotUsuario),
+        inimigoEscolhendo: resultado.estadoDraft === "AGUARDANDO_INIMIGO"
+    };
+}
+
+function encontrarProximoSlotAliado(lado) {
+    if (!LADOS[lado] || !estado.picks[lado]) return null;
+    for (const rodada of SEQUENCIA_PICKS) {
+        if (rodada.lado !== lado) continue;
+        for (const indice of rodada.indices) {
+            if (!estado.picks[lado][indice]) return `${LADOS[lado].prefixo}${indice + 1}`;
+        }
+    }
+    return null;
+}
+
+function criarResumoRotacao(contexto, resultado) {
+    const acao = resultado.estadoDraft === "MINHA_VEZ" ? "Seu pick está aberto" : resultado.estadoDraft === "VEZ_ALIADA" ? "Sua equipe está escolhendo" : resultado.estadoDraft === "AGUARDANDO_INIMIGO" ? "A equipe inimiga está escolhendo" : formatarEstadoDraft(resultado.estadoDraft);
+    const slots = contexto.slotsAtuais.length ? contexto.slotsAtuais.join(" · ") : "Nenhum slot aberto";
+    return `
+        <section class="rotation-overview">
+            <article class="rotation-overview__item"><span>ROTAÇÃO ATUAL</span><strong>${escaparProximoPick(acao)}</strong><p>${escaparProximoPick(contexto.ladoAtual)} · ${escaparProximoPick(slots)}</p></article>
+            <article class="rotation-overview__item rotation-overview__item--ally"><span>RECOMENDAÇÃO ALIADA</span><strong>${escaparProximoPick(contexto.ehMeuSlot ? `Seu slot ${contexto.slotAliado}` : `Próximo aliado ${contexto.slotAliado ?? "—"}`)}</strong><p>${escaparProximoPick(resultado.mensagem)}</p></article>
+            <article class="rotation-overview__item rotation-overview__item--enemy"><span>LEITURA FUTURA</span><strong>Respostas inimigas calculadas</strong><p>O sistema simula counters, rotas abertas e o pior cenário após cada opção aliada.</p></article>
+        </section>
+    `;
+}
+
+function criarPrevisaoInimigaAgora(opcao, contexto) {
+    const projecao = opcao?.projecao ?? {};
+    const respostas = projecao.respostasProvaveis ?? [];
+    return `
+        <section class="enemy-forecast">
+            <div class="enemy-forecast__header"><div><span class="analysis-section__title">PICKS INIMIGOS PROVÁVEIS</span><strong>Após ${escaparProximoPick(opcao?.escolha?.heroi ?? "o pick aliado recomendado")}</strong></div><small>${contexto.inimigoEscolhendo ? "INIMIGO ESCOLHENDO AGORA" : "PRÓXIMA RESPOSTA INIMIGA"}</small></div>
+            <div class="enemy-forecast__grid">
+                ${respostas.slice(0, 3).map((resposta, indice) => `
+                    <article class="enemy-forecast-card"><span class="enemy-forecast-card__rank">${indice + 1}</span><div><strong>${escaparProximoPick(resposta.heroi)}</strong><small>${nomeRotaProximoPick(resposta.rota)} · ${resposta.probabilidadeHeuristica}% provável</small><p>${escaparProximoPick(resposta.motivos?.[0] ?? `Impacto estimado de ${resposta.impactoContraNossaComposicao}/100 contra nossa composição.`)}</p></div></article>
+                `).join("") || criarLinhaVazia("Ainda não há informação suficiente para prever um herói inimigo específico.")}
+            </div>
         </section>
     `;
 }
@@ -562,24 +601,19 @@ function criarAbaInimigos(resultado) {
 
 function criarAbaProjecao(resultado) {
     const opcoes = obterOpcoesEstrategicas(resultado);
-
-    if (opcoes.length === 0) {
-        return criarEstadoSemDiagnostico(
-            "As projeções aparecerão quando houver candidatos disponíveis para sua função."
-        );
-    }
-
+    if (opcoes.length === 0) return criarEstadoSemDiagnostico("As projeções aparecerão quando houver candidatos disponíveis para o próximo pick aliado.");
+    const contexto = obterContextoRotacao(resultado);
+    const principal = opcoes[0];
+    const respostasPrincipais = principal?.projecao?.respostasProvaveis ?? [];
     return `
         <div class="analysis-view">
-            <article class="condition-card">
-                <span class="analysis-summary-card__eyebrow">SIMULAÇÃO DOS PRÓXIMOS PICKS</span>
-                <strong>Como o inimigo pode responder</strong>
-                <p>As probabilidades são heurísticas e usam rotas abertas, encaixe estratégico e capacidade de counter. Não representam frequência estatística real.</p>
-            </article>
-
-            <section>
-                ${opcoes.map((opcao, indice) => criarBlocoProjecao(opcao, indice)).join("")}
+            <section class="projection-flow">
+                <article class="projection-flow__step projection-flow__step--ally"><span>1 · PICK ALIADO</span><strong>${escaparProximoPick(principal?.escolha?.heroi ?? "—")}</strong><p>${escaparProximoPick(contexto.slotAliado ?? "Próximo slot aliado")}</p></article>
+                <article class="projection-flow__step projection-flow__step--enemy"><span>2 · RESPOSTAS INIMIGAS</span><strong>${respostasPrincipais.length} cenários principais</strong><p>${respostasPrincipais.slice(0, 2).map((item) => item.heroi).join(" · ") || "Aguardando informação"}</p></article>
+                <article class="projection-flow__step projection-flow__step--risk"><span>3 · PIOR CENÁRIO</span><strong>${principal?.projecao?.piorCenarioProjetado ?? 0}/100</strong><p>Robustez ${principal?.projecao?.robustez ?? 0}/100</p></article>
             </section>
+            <article class="condition-card"><span class="analysis-summary-card__eyebrow">SIMULAÇÃO DOS PRÓXIMOS PICKS</span><strong>Aliado recomendado, respostas inimigas e pior cenário</strong><p>Para cada opção aliada, o motor projeta os heróis inimigos mais prováveis pelas rotas abertas, capacidade de counter, condição de vitória e impacto contra nosso DNA.</p></article>
+            <section>${opcoes.map((opcao, indice) => criarBlocoProjecao(opcao, indice)).join("")}</section>
         </div>
     `;
 }
@@ -587,42 +621,16 @@ function criarAbaProjecao(resultado) {
 function criarBlocoProjecao(opcao, indice) {
     const projecao = opcao.projecao ?? {};
     const respostas = projecao.respostasProvaveis ?? [];
-
     return `
         <article class="projection-option">
-            <div class="projection-option__header">
-                <div>
-                    <span class="analysis-summary-card__eyebrow">${escaparProximoPick(opcao.titulo)}</span>
-                    <h3>${escaparProximoPick(opcao.escolha?.heroi ?? "—")}</h3>
-                </div>
-                <div class="projection-score">
-                    <strong>${projecao.robustez ?? 0}/100</strong>
-                    <small>ROBUSTEZ</small>
-                </div>
-            </div>
-
+            <div class="projection-option__header"><div><span class="analysis-summary-card__eyebrow">${escaparProximoPick(opcao.titulo)}</span><h3>${escaparProximoPick(opcao.escolha?.heroi ?? "—")}</h3><small class="projection-option__slot">Próximo pick aliado</small></div><div class="projection-score"><strong>${projecao.robustez ?? 0}/100</strong><small>ROBUSTEZ</small></div></div>
             <div class="projection-list">
-                ${respostas.map((resposta) => `
-                    <article class="projection-answer">
-                        <div class="projection-answer__top">
-                            <strong>${escaparProximoPick(resposta.heroi)} · ${nomeRotaProximoPick(resposta.rota)}</strong>
-                            <small>${resposta.probabilidadeHeuristica}% provável</small>
-                        </div>
-                        <p>Impacto contra nossa composição: ${resposta.impactoContraNossaComposicao}/100.</p>
-                    </article>
-                `).join("") || criarLinhaVazia("Nenhuma resposta futura necessária neste estado.")}
+                ${respostas.map((resposta, respostaIndice) => `
+                    <article class="projection-answer"><div class="projection-answer__top"><strong>${respostaIndice + 1}. ${escaparProximoPick(resposta.heroi)} · ${nomeRotaProximoPick(resposta.rota)}</strong><small>${resposta.probabilidadeHeuristica}% provável</small></div><p>Impacto contra nossa composição: ${resposta.impactoContraNossaComposicao}/100 · Pontuação inimiga: ${resposta.pontuacaoInimiga}/100.</p>${(resposta.motivos ?? []).length ? `<ul class="projection-answer__reasons">${resposta.motivos.slice(0, 2).map((motivo) => `<li>${escaparProximoPick(motivo)}</li>`).join("")}</ul>` : ""}</article>
+                `).join("") || criarLinhaVazia("Nenhuma resposta futura específica foi identificada neste estado.")}
             </div>
-
-            <p style="margin-top:9px">${escaparProximoPick(
-                projecao.resumoPiorCenario ?? ""
-            )}</p>
-
-            <button
-                class="pick-option-card__button"
-                type="button"
-                data-option-details="${indice}"
-                style="margin-top:10px"
-            >Ver análise completa</button>
+            <div class="projection-option__worst-case"><strong>Pior cenário projetado: ${projecao.piorCenarioProjetado ?? 0}/100</strong><p>${escaparProximoPick(projecao.resumoPiorCenario ?? "")}</p></div>
+            <button class="pick-option-card__button" type="button" data-option-details="${indice}" style="margin-top:10px">Ver análise completa</button>
         </article>
     `;
 }
@@ -786,7 +794,8 @@ function mensagemEstadoVazio(estadoDraft) {
     const mensagens = {
         FASE_DE_BANS: "Complete os três bans de cada equipe. O motor continuará acompanhando o estado, mas as recomendações serão liberadas nos picks.",
         AGUARDANDO_IDENTIFICACAO: "Informe seu lado, sua posição e sua função no topo da tela.",
-        PICK_JA_REALIZADO: "Seu pick já foi registrado. Continue preenchendo o draft para acompanhar o plano final.",
+        PICK_JA_REALIZADO: "Seu pick já foi registrado. O motor continuará recomendando os próximos picks aliados.",
+        EQUIPE_ALIADA_COMPLETA: "Os picks aliados terminaram. Continue registrando o inimigo para concluir a leitura.",
         DRAFT_CONCLUIDO: "O draft terminou. Consulte as abas de composição, inimigos e projeção para revisar o plano de jogo.",
         COMPOSICAO_ALIADA_INCOMPATIVEL: "A distribuição atual repete funções e precisa ser corrigida.",
         SEM_CANDIDATOS: "Nenhum candidato válido foi encontrado para as funções preferidas."
@@ -857,11 +866,14 @@ function nomeDimensao(dimensao) {
 function formatarEstadoDraft(estadoDraft) {
     const estados = {
         MINHA_VEZ: "Sua vez",
+        VEZ_ALIADA: "Vez aliada",
+        AGUARDANDO_INIMIGO: "Inimigo escolhendo",
         PLANEJAMENTO: "Planejamento",
         FASE_DE_BANS: "Fase de bans",
         AGUARDANDO_IDENTIFICACAO: "Configuração pendente",
         PICK_JA_REALIZADO: "Pick registrado",
         DRAFT_CONCLUIDO: "Draft concluído",
+        EQUIPE_ALIADA_COMPLETA: "Equipe aliada completa",
         COMPOSICAO_ALIADA_INCOMPATIVEL: "Conflito de funções",
         SEM_CANDIDATOS: "Sem candidatos"
     };

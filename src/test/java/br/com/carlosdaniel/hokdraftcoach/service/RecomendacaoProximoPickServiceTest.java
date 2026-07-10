@@ -70,7 +70,7 @@ class RecomendacaoProximoPickServiceTest {
             cenarioPrincipal(LadoDraft.VERMELHO, 5)
         );
 
-        assertEquals("PLANEJAMENTO", resposta.estadoDraft());
+        assertEquals("AGUARDANDO_INIMIGO", resposta.estadoDraft());
         assertFalse(resposta.ehMinhaVez());
         assertEquals("R5", resposta.meuSlot());
         assertNotNull(resposta.recomendacaoPrincipal());
@@ -78,6 +78,18 @@ class RecomendacaoProximoPickServiceTest {
             resposta.avisos().stream()
                 .anyMatch(aviso -> aviso.contains("preventiva"))
         );
+    }
+
+    @Test
+    void deveContinuarRecomendandoParaAliadoDepoisDoMeuPick() {
+        RecomendacaoProximoPickResponse resposta = service.recomendar(
+            cenarioPrincipal(LadoDraft.AZUL, 1)
+        );
+
+        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+        assertFalse(resposta.ehMinhaVez());
+        assertNotNull(resposta.recomendacaoPrincipal());
+        assertTrue(resposta.mensagem().contains("B2"));
     }
 
     @Test

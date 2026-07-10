@@ -127,18 +127,6 @@ public class RecomendacaoProximoPickService {
             );
         }
 
-        if (slotJaPreenchido(request)) {
-            return semRecomendacao(
-                "PICK_JA_REALIZADO",
-                "Seu slot já possui um herói registrado.",
-                request,
-                inferencia,
-                null,
-                List.of(),
-                List.of("Remova o herói do seu slot para recalcular.")
-            );
-        }
-
         EstadoRodada rodadaAtual = calcularRodadaAtual(request);
 
         if (rodadaAtual == null) {
@@ -152,6 +140,26 @@ public class RecomendacaoProximoPickService {
                 List.of()
             );
         }
+
+        Integer ordemAlvoAliada = proximaOrdemAliada(request);
+if (ordemAlvoAliada == null) {
+    return semRecomendacao(
+        "EQUIPE_ALIADA_COMPLETA",
+        "Os cinco picks da sua equipe já foram registrados.",
+        request,
+        inferencia,
+        rodadaAtual.lado(),
+        rodadaAtual.slots(),
+        List.of("Acompanhe os picks inimigos restantes e o plano final da composição.")
+    );
+}
+
+boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
+    request.minhaOrdem()
+) && !slotJaPreenchido(request);
+List<Rota> funcoesAlvo = recomendacaoParaUsuario
+    ? request.funcoesPreferidas()
+    : List.of();
 
         InferenciaEquipeResponse aliados = equipe(
             inferencia,
@@ -198,7 +206,7 @@ public class RecomendacaoProximoPickService {
                 aliados,
                 inimigos,
                 inimigosSemFuncao,
-                request.funcoesPreferidas()
+                funcoesAlvo
             ))
             .filter(resultado -> resultado != null)
             .sorted(comparador)
@@ -225,17 +233,30 @@ public class RecomendacaoProximoPickService {
             .limit(LIMITE_ALTERNATIVAS)
             .toList();
         boolean ehMinhaVez = rodadaAtual.lado() == request.meuLado()
-            && rodadaAtual.ordens().contains(request.minhaOrdem());
-        String mensagem = ehMinhaVez
-            ? "É sua vez. A melhor escolha agora é "
-                + principal.heroi() + "."
-            : "Planejamento para seu próximo pick: "
-                + principal.heroi()
-                + ". A recomendação pode mudar após os picks anteriores.";
+    && rodadaAtual.ordens().contains(request.minhaOrdem());
+boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
+String estadoDraft = ehMinhaVez
+    ? "MINHA_VEZ"
+    : vezAliada
+        ? "VEZ_ALIADA"
+        : "AGUARDANDO_INIMIGO";
+String mensagem = switch (estadoDraft) {
+    case "MINHA_VEZ" ->
+        "É sua vez. A melhor escolha agora é "
+            + principal.heroi() + ".";
+    case "VEZ_ALIADA" ->
+        "É a vez da sua equipe. Para " + slotAlvo
+            + ", a melhor escolha é " + principal.heroi() + ".";
+    default ->
+        "O inimigo está escolhendo. Planejamento para " + slotAlvo
+            + ": " + principal.heroi()
+            + " lidera entre as opções aliadas.";
+};
 
-        return new RecomendacaoProximoPickResponse(
-            VERSAO_MOTOR,
-            ehMinhaVez ? "MINHA_VEZ" : "PLANEJAMENTO",
+return new RecomendacaoProximoPickResponse(
+    VERSAO_MOTOR,
+    estadoDraft,
             mensagem,
             ehMinhaVez,
             meuSlot(request),
@@ -879,6 +900,27 @@ public class RecomendacaoProximoPickService {
 
         return null;
     }
+
+    private Integer proximaOrdemAliada(
+    RecomendacaoProximoPickRequest request
+) {
+    Map<Integer, Long> preenchidos = mapaPicks(
+        picks(request, request.meuLado())
+    );
+
+    for (RodadaPick rodada : RODADAS) {
+        if (rodada.lado() != request.meuLado()) {
+            continue;
+        }
+        for (Integer ordem : rodada.ordens()) {
+            if (!preenchidos.containsKey(ordem)) {
+                return ordem;
+            }
+        }
+    }
+
+    return null;
+}
 
     private boolean slotJaPreenchido(
         RecomendacaoProximoPickRequest request

@@ -66,9 +66,15 @@
 }
 
 .coach-status--planejamento,
+.coach-status--vez-aliada,
 .coach-status--carregando {
     color: #f0d18d;
     background: rgba(215, 173, 88, 0.1);
+}
+
+.coach-status--aguardando-inimigo {
+    color: #ff8b9a;
+    background: rgba(255, 75, 100, 0.1);
 }
 
 .coach-status--fase-de-bans,
@@ -712,6 +718,47 @@
     line-height: 1.4;
 }
 
+
+.rotation-overview,
+.projection-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rotation-overview__item,
+.projection-flow__step,
+.enemy-forecast { border: 1px solid #223651; border-radius: 9px; background: rgba(11, 24, 43, 0.76); }
+.rotation-overview__item,
+.projection-flow__step { min-width: 0; padding: 11px; }
+.rotation-overview__item > span,
+.projection-flow__step > span { display: block; margin-bottom: 6px; color: #7f8fa5; font-size: 0.48rem; font-weight: 900; letter-spacing: 0.06em; }
+.rotation-overview__item strong,
+.projection-flow__step strong { display: block; margin-bottom: 5px; color: #e9f1fa; font-size: 0.72rem; }
+.rotation-overview__item p,
+.projection-flow__step p { color: #8191a7; font-size: 0.56rem; line-height: 1.42; }
+.rotation-overview__item--ally,
+.projection-flow__step--ally { border-color: rgba(66, 157, 255, 0.34); background: rgba(35, 93, 160, 0.14); }
+.rotation-overview__item--ally strong,
+.projection-flow__step--ally strong { color: #72b7ff; }
+.rotation-overview__item--enemy,
+.projection-flow__step--enemy { border-color: rgba(255, 83, 107, 0.3); background: rgba(120, 30, 47, 0.12); }
+.rotation-overview__item--enemy strong,
+.projection-flow__step--enemy strong { color: #ff7e8f; }
+.projection-flow__step--risk { border-color: rgba(234, 184, 75, 0.3); background: rgba(125, 87, 18, 0.12); }
+.projection-flow__step--risk strong { color: #f0c566; }
+.enemy-forecast { padding: 12px; }
+.enemy-forecast__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.enemy-forecast__header strong { display: block; margin-top: 4px; color: #ff8292; font-size: 0.75rem; }
+.enemy-forecast__header small { color: #7f8fa5; font-size: 0.48rem; font-weight: 850; }
+.enemy-forecast__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.enemy-forecast-card { min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; padding: 9px; border: 1px solid rgba(241, 82, 105, 0.22); border-radius: 7px; background: rgba(94, 27, 42, 0.1); }
+.enemy-forecast-card__rank { width: 22px; height: 22px; display: grid; place-items: center; color: #16070b; border-radius: 5px; background: #ff7889; font-size: 0.58rem; font-weight: 900; }
+.enemy-forecast-card strong { display: block; color: #f2e7ea; font-size: 0.65rem; }
+.enemy-forecast-card small { display: block; margin: 3px 0 5px; color: #bd7f8a; font-size: 0.49rem; }
+.enemy-forecast-card p { color: #97858b; font-size: 0.53rem; line-height: 1.4; }
+.projection-option__slot { display: block; margin-top: 3px; color: #718198; font-size: 0.49rem; }
+.projection-answer__reasons { display: grid; gap: 4px; margin-top: 7px; padding-left: 15px; }
+.projection-answer__reasons li { color: #8797ac; font-size: 0.53rem; line-height: 1.38; }
+.projection-option__worst-case { margin-top: 9px; padding: 10px; border: 1px solid rgba(229, 177, 67, 0.22); border-radius: 7px; background: rgba(111, 78, 18, 0.1); }
+.projection-option__worst-case strong { display: block; margin-bottom: 5px; color: #eac66f; font-size: 0.62rem; }
+.projection-option__worst-case p { color: #8f8a7b; font-size: 0.55rem; line-height: 1.42; }
+
 @media (max-width: 1320px) {
     .recommendation-grid {
         grid-template-columns: 1fr;
@@ -752,6 +799,9 @@
     .analysis-summary-grid,
     .recommendation-grid,
     .threat-grid,
+    .rotation-overview,
+    .projection-flow,
+    .enemy-forecast__grid,
     .pick-details-grid {
         grid-template-columns: 1fr;
     }
