@@ -35,7 +35,7 @@ jobs:
           cache: maven
 
       - name: Aplicar otimização temporária
-        if: github.event_name == 'push' && github.ref_name == 'feat/backend-draft-engine'
+        if: github.head_ref == 'feat/backend-draft-engine' || github.ref_name == 'feat/backend-draft-engine'
         run: python3 .github/scripts/optimize_analysis.py
 
       - name: Compilar e executar testes
@@ -107,7 +107,7 @@ jobs:
           exit 1
 
       - name: Publicar otimização validada
-        if: github.event_name == 'push' && github.ref_name == 'feat/backend-draft-engine'
+        if: github.head_ref == 'feat/backend-draft-engine' || github.ref_name == 'feat/backend-draft-engine'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
