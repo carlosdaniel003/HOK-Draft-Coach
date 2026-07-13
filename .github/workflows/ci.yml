@@ -9,11 +9,8 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 concurrency:
-  group: java-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: java-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -23,9 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: feat/backend-draft-engine
-          fetch-depth: 0
 
       - name: Configurar Java 21
         uses: actions/setup-java@v4
@@ -33,72 +27,6 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-
-      - name: Aplicar funções explícitas por slot
-        shell: bash
-        run: python3 .github/scripts/apply-team-slot-roles.py
-
-      - name: Corrigir captura da ordem alvo
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java")
-          text = path.read_text(encoding="utf-8")
-          marker = "        return new RecomendacaoProximoPickRequest(\n            request.meuLado(),\n            ordemAlvo,\n"
-          replacement = "        Integer ordemAlvoFinal = ordemAlvo;\n        return new RecomendacaoProximoPickRequest(\n            request.meuLado(),\n            ordemAlvoFinal,\n"
-          if marker not in text:
-              raise SystemExit("Início do bloco da ordem alvo não encontrado")
-          text = text.replace(marker, replacement, 1)
-          text = text.replace(
-              "request.funcoesDaOrdem(ordemAlvo),",
-              "request.funcoesDaOrdem(ordemAlvoFinal),",
-              1
-          )
-          text = text.replace(
-              "!ordemAlvo.equals(item.ordem())",
-              "!ordemAlvoFinal.equals(item.ordem())",
-              1
-          )
-          path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Atualizar cenário legado de função
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java")
-          text = path.read_text(encoding="utf-8")
-          start = text.index("    void deveManterDnaEProjecoesDepoisDoPickDoUsuario()")
-          end = text.index("    @Test", start + 10)
-          section = text[start:end]
-          old = "new PickSemFuncaoRequest(1, 7L)"
-          if old not in section:
-              raise SystemExit("Pick legado incompatível não encontrado")
-          section = section.replace(
-              old,
-              "new PickSemFuncaoRequest(1, 18L)",
-              1
-          )
-          path.write_text(
-              text[:start] + section + text[end:],
-              encoding="utf-8"
-          )
-          PY
-
-      - name: Validar JavaScript
-        shell: bash
-        run: |
-          node --check src/main/resources/static/js/app.js
-          node --check src/main/resources/static/js/ranked-mode.js
-          node --check src/main/resources/static/js/next-pick.js
-          node --check src/main/resources/static/js/team-roles.js
-          grep -q '>Top Lane<' src/main/resources/static/index.html
-          grep -q '>ADC<' src/main/resources/static/index.html
-          grep -q '>Suporte<' src/main/resources/static/index.html
 
       - name: Compilar e executar testes
         shell: bash
@@ -127,11 +55,11 @@ jobs:
 
           if [ "$status" -ne 0 ]; then
             echo "Maven falhou. Últimas linhas do log:"
-            tail -n 160 maven.log
+            tail -n 120 maven.log
             exit "$status"
           fi
 
-          tail -n 40 maven.log
+          tail -n 30 maven.log
 
       - name: Construir imagem da Vercel
         run: docker build --file Dockerfile.vercel --tag hok-draft-coach:ci .
@@ -167,19 +95,3 @@ jobs:
           docker logs hok-draft-coach-ci
           docker rm --force hok-draft-coach-ci
           exit 1
-
-      - name: Publicar funções por slot validadas
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/main src/test docs
-
-          if git diff --cached --quiet; then
-            echo "Nenhuma alteração nova para publicar."
-            exit 0
-          fi
-
-          git commit -m "feat: assign explicit roles to allied draft slots"
-          git push origin HEAD:feat/backend-draft-engine
