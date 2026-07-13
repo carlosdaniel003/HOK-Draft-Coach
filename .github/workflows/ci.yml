@@ -38,6 +38,46 @@ jobs:
         shell: bash
         run: python3 .github/scripts/apply-team-slot-roles.py
 
+      - name: Corrigir captura da ordem alvo
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java")
+          text = path.read_text(encoding="utf-8")
+          old = '''        return new RecomendacaoProximoPickRequest(
+              request.meuLado(),
+              ordemAlvo,
+              request.bansAzul(),
+              request.bansVermelho(),
+              request.picksAzul(),
+              request.picksVermelho(),
+              request.funcoesDaOrdem(ordemAlvo),
+              request.funcoesAliadas().stream()
+                  .filter(item -> !ordemAlvo.equals(item.ordem()))
+                  .toList()
+          );
+          '''
+          new = '''        Integer ordemAlvoFinal = ordemAlvo;
+          return new RecomendacaoProximoPickRequest(
+              request.meuLado(),
+              ordemAlvoFinal,
+              request.bansAzul(),
+              request.bansVermelho(),
+              request.picksAzul(),
+              request.picksVermelho(),
+              request.funcoesDaOrdem(ordemAlvoFinal),
+              request.funcoesAliadas().stream()
+                  .filter(item -> !ordemAlvoFinal.equals(item.ordem()))
+                  .toList()
+          );
+          '''
+          if old not in text:
+              raise SystemExit("Bloco da ordem alvo não encontrado")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Validar JavaScript
         shell: bash
         run: |
