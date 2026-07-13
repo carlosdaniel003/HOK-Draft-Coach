@@ -58,7 +58,7 @@ class ConhecimentoJungleServiceTest {
     @Test
     void deveCadastrarOsQuarentaETresJunglersDaS15() {
         Set<String> esperados = Set.of(
-            "Ata", "Butterfly", "Fatih", "Agudo", "Arke", "Arthur",
+            "Ata", "Butterfly", "Fatih", "Agu", "Arke", "Arthur",
             "Athena", "Augran", "Chano", "Charlotte", "Chicha",
             "Cirrus", "Dharma", "Dian Wei", "Fang", "Feyd",
             "Gao Changgong", "Han Xin", "Jing", "Kaizer", "Kongming",
@@ -79,7 +79,8 @@ class ConhecimentoJungleServiceTest {
 
     @Test
     void deveNormalizarNomesInformadosEAliasesGlobais() {
-        assertEquals("Agudo", buscar("Aguu").getNome());
+        assertEquals("Agu", buscar("Aguu").getNome());
+        assertEquals("Agu", buscar("Agudo").getNome());
         assertEquals("Charlotte", buscar("Charlottr").getNome());
         assertEquals("Yango", buscar("Yuan Ge").getNome());
         assertEquals("Xuance", buscar("Baili Xuance").getNome());
@@ -90,10 +91,10 @@ class ConhecimentoJungleServiceTest {
     @Test
     void devePreservarRotasFlexiveisSemDuplicarHerois() {
         assertTrue(buscar("Ata").podeJogarNaRota(Rota.CLASH_LANE));
-        assertTrue(buscar("Agudo").podeJogarNaRota(Rota.FARM_LANE));
+        assertTrue(buscar("Agu").podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(buscar("Chano").podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(buscar("Chicha").podeJogarNaRota(Rota.CLASH_LANE));
-        assertTrue(buscar("Chicha").podeJogarNaRota(Rota.FARM_LANE));
+        assertFalse(buscar("Chicha").podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(buscar("Kongming").podeJogarNaRota(Rota.MID_LANE));
         assertTrue(buscar("Sima Yi").podeJogarNaRota(Rota.MID_LANE));
         assertTrue(buscar("Sun Ce").podeJogarNaRota(Rota.CLASH_LANE));
@@ -137,7 +138,7 @@ class ConhecimentoJungleServiceTest {
     void deveCadastrarConfrontosDeInvasaoDueloEMecanica() {
         ConfrontoJungle ata = conhecimentoJungleService.analisarConfronto(
             "Ata",
-            "Agudo"
+            "Agu"
         );
         ConfrontoJungle musashi = conhecimentoJungleService.analisarConfronto(
             "Musashi",
@@ -246,7 +247,7 @@ class ConhecimentoJungleServiceTest {
     @Test
     void devePontuarConhecimentoParaUsoNoMotor() {
         Heroi ata = buscar("Ata");
-        Heroi agudo = buscar("Agudo");
+        Heroi agudo = buscar("Agu");
         Heroi augran = buscar("Augran");
         Heroi dolia = buscar("Dolia");
         Heroi zhangFei = buscar("Zhang Fei");

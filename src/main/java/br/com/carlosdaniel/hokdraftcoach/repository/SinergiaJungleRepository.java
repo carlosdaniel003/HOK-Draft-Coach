@@ -41,13 +41,13 @@ public class SinergiaJungleRepository {
             "Aceleração reduz o problema de alcance e oferece retirada após a entrada.",
             "velocidade", "engage", "desengage"),
 
-        s("Agudo", "Sun Bin", 9, ConfiancaDado.ALTA,
+        s("Agu", "Sun Bin", 9, ConfiancaDado.ALTA,
             "Velocidade e utilidade transformam buffs e poke em controle de objetivo.",
             "velocidade", "buffs", "objetivos"),
-        s("Agudo", "Sakeer", 9, ConfiancaDado.ALTA,
+        s("Agu", "Sakeer", 9, ConfiancaDado.ALTA,
             "Visão e cura protegem a jungler atiradora durante cerco e objetivos.",
             "visão", "cura", "cerco"),
-        s("Agudo", "Da Qiao", 8, ConfiancaDado.MEDIA,
+        s("Agu", "Da Qiao", 8, ConfiancaDado.MEDIA,
             "Macro e retorno seguro ampliam a pressão de mapa da composição.",
             "macro", "objetivos", "reposicionamento"),
 

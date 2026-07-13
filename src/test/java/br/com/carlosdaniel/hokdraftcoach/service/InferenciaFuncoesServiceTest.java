@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import br.com.carlosdaniel.hokdraftcoach.dto.FuncaoSlotRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaEquipeResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesResponse;
@@ -150,4 +151,39 @@ class InferenciaFuncoesServiceTest {
 
         return picks;
     }
+
+    @Test
+    void deveFixarFuncaoInformadaParaHeroiFlex() {
+        InferenciaFuncoesRequest request = new InferenciaFuncoesRequest(
+            List.of(new PickSemFuncaoRequest(1, 20L)),
+            List.of(),
+            List.of(new FuncaoSlotRequest(1, Rota.JUNGLE)),
+            List.of()
+        );
+
+        InferenciaEquipeResponse azul = service.inferir(request).equipeAzul();
+
+        assertEquals(1, azul.totalHipoteses());
+        assertEquals(
+            Rota.JUNGLE,
+            azul.hipoteses().getFirst().atribuicoes().getFirst().rota()
+        );
+        assertTrue(azul.ambiguidades().getFirst().funcaoConfirmada());
+    }
+
+    @Test
+    void deveInvalidarHeroiForaDaFuncaoInformada() {
+        InferenciaFuncoesRequest request = new InferenciaFuncoesRequest(
+            List.of(new PickSemFuncaoRequest(1, 20L)),
+            List.of(),
+            List.of(new FuncaoSlotRequest(1, Rota.FARM_LANE)),
+            List.of()
+        );
+
+        InferenciaEquipeResponse azul = service.inferir(request).equipeAzul();
+
+        assertFalse(azul.composicaoCompativel());
+        assertTrue(azul.hipoteses().isEmpty());
+    }
+
 }

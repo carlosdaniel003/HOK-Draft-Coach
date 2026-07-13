@@ -94,7 +94,13 @@ public class RecomendacaoProximoPickService {
         InferenciaFuncoesResponse inferencia = inferenciaFuncoesService.inferir(
             new InferenciaFuncoesRequest(
                 request.picksAzul(),
-                request.picksVermelho()
+                request.picksVermelho(),
+                request.meuLado() == LadoDraft.AZUL
+                    ? request.funcoesDaEquipe()
+                    : List.of(),
+                request.meuLado() == LadoDraft.VERMELHO
+                    ? request.funcoesDaEquipe()
+                    : List.of()
             )
         );
 
@@ -159,9 +165,9 @@ public class RecomendacaoProximoPickService {
         boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
             request.minhaOrdem()
         ) && !slotJaPreenchido(request);
-        List<Rota> funcoesAlvo = recomendacaoParaUsuario
-            ? request.funcoesPreferidas()
-            : List.of();
+        List<Rota> funcoesAlvo = request.funcoesDaOrdem(
+            ordemAlvoAliada
+        );
 
         InferenciaEquipeResponse aliados = equipe(
             inferencia,
@@ -291,6 +297,10 @@ public class RecomendacaoProximoPickService {
             List<Rota> rotasValidas = candidato.getRotasPossiveis()
                 .stream()
                 .filter(hipoteseAliada.rotasAbertas()::contains)
+                .filter(rota ->
+                    funcoesPreferidas.isEmpty()
+                        || funcoesPreferidas.contains(rota)
+                )
                 .toList();
 
             if (rotasValidas.isEmpty()) {

@@ -13,6 +13,7 @@
     <script src="/js/app.js" defer></script>
     <script src="/js/ranked-mode.js" defer></script>
     <script src="/js/next-pick.js" defer></script>
+    <script src="/js/team-roles.js" defer></script>
 </head>
 <body>
     <header class="draft-topbar">
@@ -58,11 +59,11 @@
                     <small>MINHA FUNÇÃO</small>
                     <select id="preferencia-funcao">
                         <option value="">Qualquer função</option>
-                        <option value="CLASH_LANE">Clash Lane</option>
+                        <option value="CLASH_LANE">Top Lane</option>
                         <option value="JUNGLE">Jungle</option>
                         <option value="MID_LANE">Mid Lane</option>
-                        <option value="FARM_LANE">Farm Lane</option>
-                        <option value="ROAMING">Roaming</option>
+                        <option value="FARM_LANE">ADC</option>
+                        <option value="ROAMING">Suporte</option>
                     </select>
                 </span>
             </label>
@@ -214,11 +215,11 @@
                 <input id="pesquisa-heroi" type="search" placeholder="Pesquisar herói..." autocomplete="off">
                 <select id="filtro-rota" aria-label="Filtrar por função possível">
                     <option value="">Todas as funções</option>
-                    <option value="CLASH_LANE">Clash Lane</option>
+                    <option value="CLASH_LANE">Top Lane</option>
                     <option value="JUNGLE">Jungle</option>
                     <option value="MID_LANE">Mid Lane</option>
-                    <option value="FARM_LANE">Farm Lane</option>
-                    <option value="ROAMING">Roaming</option>
+                    <option value="FARM_LANE">ADC</option>
+                    <option value="ROAMING">Suporte</option>
                 </select>
             </div>
 

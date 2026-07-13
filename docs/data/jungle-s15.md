@@ -22,14 +22,14 @@ Tier, confronto, sinergia e composição permanecem separados. Um jungler de tie
 
 ## Normalização dos nomes enviados
 
-- `Aguu` foi normalizado para `Agudo`.
+- `Aguu` foi normalizado para `Agu`.
 - `Charlottr` foi normalizado para `Charlotte`.
 - `Yuan Ge` foi cadastrado como alias de `Yango`, nome usado no servidor Global.
 - `Xuance` foi incluído para completar os 43 junglers da referência S15.
 
 ## Junglers cadastrados
 
-Ata, Butterfly, Fatih, Agudo, Arke, Arthur, Athena, Augran, Chano,
+Ata, Butterfly, Fatih, Agu, Arke, Arthur, Athena, Augran, Chano,
 Charlotte, Chicha, Cirrus, Dharma, Dian Wei, Fang, Feyd, Gao Changgong,
 Han Xin, Jing, Kaizer, Kongming, Lam, Li Bai, Liu Bei, Luna, Mayene,
 Menki, Mi Yue, Musashi, Nakoruru, Pei, Sima Yi, Sun Ce, Ukyo Tachibana,
@@ -42,7 +42,7 @@ Umbrosa, Wukong, Wuyan, Yang Jian, Yao, Ying, Zilong, Xuance e Yango.
 | S | Augran |
 | A | Chicha, Kaizer, Kongming, Wukong |
 | B | Arke, Arthur, Chano, Charlotte, Dian Wei, Fang, Gao Changgong, Lam, Li Bai, Mi Yue, Musashi, Sima Yi, Sun Ce, Ying |
-| C | Ata, Butterfly, Fatih, Agudo, Athena, Cirrus, Dharma, Feyd, Han Xin, Jing, Liu Bei, Luna, Mayene, Menki, Nakoruru, Pei, Ukyo Tachibana, Umbrosa, Wuyan, Xuance, Yang Jian, Yango, Yao, Zilong |
+| C | Ata, Butterfly, Fatih, Agu, Athena, Cirrus, Dharma, Feyd, Han Xin, Jing, Liu Bei, Luna, Mayene, Menki, Nakoruru, Pei, Ukyo Tachibana, Umbrosa, Wuyan, Xuance, Yang Jian, Yango, Yao, Zilong |
 
 ## Arquétipos de Jungle
 
@@ -91,12 +91,12 @@ Cada jungler recebe notas de `0 a 10` para:
 
 ## Exemplos de confrontos
 
-- Ata e Han Xin contra Agudo: engage e invasão contra atiradora jungle.
+- Ata e Han Xin contra Agu: engage e invasão contra atiradora jungle.
 - Musashi contra Fatih, Umbrosa e Mi Yue: anti-cura contra sustain.
 - Arthur contra Luna, Jing, Li Bai, Yango e Xuance: silêncio contra sequências móveis.
 - Pei e Han Xin contra Chano, Kongming e Wukong: invasão contra escalamento.
 - Kaizer e Liu Bei contra assassinos de primeira rotação.
-- Sima Yi contra Kongming, Luna, Agudo e Chano: silêncio e acesso direto.
+- Sima Yi contra Kongming, Luna, Agu e Chano: silêncio e acesso direto.
 - Dian Wei e Augran contra linhas de frente resistentes.
 - Wuyan e Dharma contra assassinos dependentes de combos.
 
@@ -145,7 +145,7 @@ Cada jungler recebe notas de `0 a 10` para:
 - Athena + Da Qiao
 - Pei + Da Qiao
 - Mi Yue + Da Qiao
-- Agudo + Da Qiao
+- Agu + Da Qiao
 - Sima Yi + Guiguzi
 
 ### Reset de ultimate
@@ -183,13 +183,13 @@ GET /api/junglers/Augran
 ### Encontrar counters para um jungler inimigo
 
 ```http
-GET /api/junglers/counters?inimigo=Agudo&limite=10
+GET /api/junglers/counters?inimigo=Agu&limite=10
 ```
 
 ### Analisar confronto específico
 
 ```http
-GET /api/junglers/confronto?candidato=Ata&inimigo=Agudo
+GET /api/junglers/confronto?candidato=Ata&inimigo=Agu
 ```
 
 ### Consultar combos de um jungler

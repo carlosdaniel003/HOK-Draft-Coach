@@ -94,7 +94,7 @@ class ConhecimentoClashServiceTest {
         assertTrue(buscar("Diaochan").podeJogarNaRota(Rota.MID_LANE));
         assertTrue(buscar("Donghuang").podeJogarNaRota(Rota.ROAMING));
         assertTrue(buscar("Heino").podeJogarNaRota(Rota.MID_LANE));
-        assertTrue(buscar("Chicha").podeJogarNaRota(Rota.FARM_LANE));
+        assertFalse(buscar("Chicha").podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(buscar("Sun Ce").podeJogarNaRota(Rota.JUNGLE));
     }
 

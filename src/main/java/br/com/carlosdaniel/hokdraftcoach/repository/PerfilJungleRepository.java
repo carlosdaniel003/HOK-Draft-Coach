@@ -30,7 +30,7 @@ public class PerfilJungleRepository {
             c(TipoComposicao.POKE, TipoComposicao.EXPLOSAO, TipoComposicao.DESENGAGE),
             7, 6, 7, 9, 7, 6, 7, 9, 7, 7, 5,
             "Roubo de vida e anti-controle recompensam combates corpo a corpo prolongados."),
-        p("Agudo", a(ArquetipoJungle.ATIRADOR_JUNGLE, ArquetipoJungle.OBJETIVOS, ArquetipoJungle.UTILITARIO),
+        p("Agu", a(ArquetipoJungle.ATIRADOR_JUNGLE, ArquetipoJungle.OBJETIVOS, ArquetipoJungle.UTILITARIO),
             c(TipoComposicao.POKE, TipoComposicao.CERCO, TipoComposicao.OBJETIVOS),
             c(TipoComposicao.FRONT_TO_BACK, TipoComposicao.ALVOS_IMOVEIS, TipoComposicao.ESCALAMENTO),
             c(TipoComposicao.DIVE, TipoComposicao.ASSASSINO_MAGICO, TipoComposicao.PICKOFF),

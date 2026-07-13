@@ -593,7 +593,8 @@ public class RecomendacaoProximoPickDnaService {
             List.copyOf(request.bansVermelho()),
             List.copyOf(request.picksAzul()),
             List.copyOf(request.picksVermelho()),
-            List.copyOf(request.funcoesPreferidas())
+            List.copyOf(request.funcoesPreferidas()),
+            List.copyOf(request.funcoesAliadas())
         );
     }
 
@@ -620,15 +621,18 @@ public class RecomendacaoProximoPickDnaService {
             return request;
         }
 
-        boolean alvoEhUsuario = ordemAlvo.equals(request.minhaOrdem());
+        Integer ordemAlvoFinal = ordemAlvo;
         return new RecomendacaoProximoPickRequest(
             request.meuLado(),
-            ordemAlvo,
+            ordemAlvoFinal,
             request.bansAzul(),
             request.bansVermelho(),
             request.picksAzul(),
             request.picksVermelho(),
-            alvoEhUsuario ? request.funcoesPreferidas() : List.of()
+            request.funcoesDaOrdem(ordemAlvoFinal),
+            request.funcoesAliadas().stream()
+                .filter(item -> !ordemAlvoFinal.equals(item.ordem()))
+                .toList()
         );
     }
 

@@ -956,3 +956,60 @@ body {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+.slot-pick-wrapper {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.slot-pick-wrapper .slot-pick {
+    width: 100%;
+}
+
+.slot-funcao-aliada {
+    display: grid;
+    grid-template-columns: auto minmax(120px, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid rgba(69, 105, 151, 0.34);
+    border-radius: 7px;
+    background: rgba(8, 19, 35, 0.82);
+}
+
+.slot-funcao-aliada > span {
+    color: #71849e;
+    font-size: 0.48rem;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+}
+
+.slot-funcao-aliada select {
+    min-width: 0;
+    padding: 5px 24px 5px 7px;
+    color: #eaf2ff;
+    border: 1px solid #29415f;
+    border-radius: 6px;
+    outline: none;
+    background: #101f34;
+    font-size: 0.62rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.slot-funcao-aliada select:focus {
+    border-color: #5aa9ff;
+    box-shadow: 0 0 0 2px rgba(72, 157, 255, 0.13);
+}
+
+.slot-funcao-aliada option:disabled {
+    color: #5d6878;
+}
+
+@media (max-width: 900px) {
+    .slot-funcao-aliada {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}

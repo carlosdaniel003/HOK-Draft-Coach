@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.carlosdaniel.hokdraftcoach.dto.AmbiguidadeFuncaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.AtribuicaoFuncaoResponse;
+import br.com.carlosdaniel.hokdraftcoach.dto.FuncaoSlotRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.HipoteseFuncaoResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaEquipeResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesRequest;
@@ -28,7 +29,7 @@ import br.com.carlosdaniel.hokdraftcoach.model.Rota;
 @Service
 public class InferenciaFuncoesService {
 
-    private static final String VERSAO_MOTOR = "FUNCOES-0.1";
+    private static final String VERSAO_MOTOR = "FUNCOES-0.2";
     private static final int LIMITE_HIPOTESES_RETORNADAS = 10;
     private static final int PONTOS_ROTA_PRINCIPAL = 20;
     private static final int PONTOS_ROTA_SECUNDARIA = 12;
@@ -47,7 +48,9 @@ public class InferenciaFuncoesService {
     ) {
         ChaveInferencia chave = new ChaveInferencia(
             List.copyOf(request.picksAzul()),
-            List.copyOf(request.picksVermelho())
+            List.copyOf(request.picksVermelho()),
+            List.copyOf(request.funcoesAzul()),
+            List.copyOf(request.funcoesVermelho())
         );
         if (
             cacheInferencias.size() >= LIMITE_CACHE_INFERENCIA
@@ -77,11 +80,13 @@ public class InferenciaFuncoesService {
 
         InferenciaEquipeResponse equipeAzul = inferirEquipe(
             "AZUL",
-            picksAzul
+            picksAzul,
+            request.funcoesAzul()
         );
         InferenciaEquipeResponse equipeVermelha = inferirEquipe(
             "VERMELHO",
-            picksVermelho
+            picksVermelho,
+            request.funcoesVermelho()
         );
 
         List<String> avisos = new ArrayList<>();
@@ -108,9 +113,13 @@ public class InferenciaFuncoesService {
 
     private InferenciaEquipeResponse inferirEquipe(
         String lado,
-        List<PickInterno> picks
+        List<PickInterno> picks,
+        List<FuncaoSlotRequest> funcoesInformadas
     ) {
         List<HipoteseInterna> hipoteses = new ArrayList<>();
+        Map<Integer, Rota> funcoesFixas = mapearFuncoesFixas(
+            funcoesInformadas
+        );
 
         gerarHipoteses(
             picks,
@@ -118,7 +127,8 @@ public class InferenciaFuncoesService {
             EnumSet.noneOf(Rota.class),
             new ArrayList<>(),
             0,
-            hipoteses
+            hipoteses,
+            funcoesFixas
         );
 
         hipoteses.sort(
@@ -158,7 +168,8 @@ public class InferenciaFuncoesService {
         Set<Rota> rotasOcupadas,
         List<AtribuicaoInterna> atribuicoes,
         int pontuacao,
-        List<HipoteseInterna> resultado
+        List<HipoteseInterna> resultado,
+        Map<Integer, Rota> funcoesFixas
     ) {
         if (indice == picks.size()) {
             resultado.add(
@@ -171,7 +182,10 @@ public class InferenciaFuncoesService {
         }
 
         PickInterno pick = picks.get(indice);
-        List<Rota> rotasOrdenadas = ordenarRotas(pick.heroi());
+        List<Rota> rotasOrdenadas = ordenarRotas(
+            pick.heroi(),
+            funcoesFixas.get(pick.ordem())
+        );
 
         for (Rota rota : rotasOrdenadas) {
             if (rotasOcupadas.contains(rota)) {
@@ -191,7 +205,8 @@ public class InferenciaFuncoesService {
                 rotasOcupadas,
                 atribuicoes,
                 pontuacao + bonus,
-                resultado
+                resultado,
+                funcoesFixas
             );
 
             atribuicoes.remove(atribuicoes.size() - 1);
@@ -199,7 +214,15 @@ public class InferenciaFuncoesService {
         }
     }
 
-    private List<Rota> ordenarRotas(Heroi heroi) {
+    private List<Rota> ordenarRotas(
+        Heroi heroi,
+        Rota funcaoFixa
+    ) {
+        if (funcaoFixa != null) {
+            return heroi.podeJogarNaRota(funcaoFixa)
+                ? List.of(funcaoFixa)
+                : List.of();
+        }
         return heroi.getRotasPossiveis()
             .stream()
             .sorted(
@@ -208,6 +231,33 @@ public class InferenciaFuncoesService {
                 )
             )
             .toList();
+    }
+
+    private Map<Integer, Rota> mapearFuncoesFixas(
+        List<FuncaoSlotRequest> funcoesInformadas
+    ) {
+        Map<Integer, Rota> porOrdem = new LinkedHashMap<>();
+        Set<Rota> funcoesUsadas = new HashSet<>();
+        for (FuncaoSlotRequest item : funcoesInformadas) {
+            if (item == null || item.ordem() == null || item.funcao() == null) {
+                throw new RegraNegocioException(
+                    "Toda função fixa deve informar ordem e função."
+                );
+            }
+            if (porOrdem.putIfAbsent(item.ordem(), item.funcao()) != null) {
+                throw new RegraNegocioException(
+                    "A ordem " + item.ordem()
+                        + " possui mais de uma função fixa."
+                );
+            }
+            if (!funcoesUsadas.add(item.funcao())) {
+                throw new RegraNegocioException(
+                    "A função " + item.funcao()
+                        + " foi atribuída a mais de um slot."
+                );
+            }
+        }
+        return Map.copyOf(porOrdem);
     }
 
     private List<HipoteseFuncaoResponse> converterHipoteses(
@@ -434,6 +484,7 @@ public class InferenciaFuncoesService {
 
             picks.add(
                 new PickInterno(
+                    request.ordem(),
                     prefixo + request.ordem(),
                     heroi
                 )
@@ -472,11 +523,14 @@ public class InferenciaFuncoesService {
 
     private record ChaveInferencia(
         List<PickSemFuncaoRequest> picksAzul,
-        List<PickSemFuncaoRequest> picksVermelho
+        List<PickSemFuncaoRequest> picksVermelho,
+        List<FuncaoSlotRequest> funcoesAzul,
+        List<FuncaoSlotRequest> funcoesVermelho
     ) {
     }
 
     private record PickInterno(
+        Integer ordem,
         String slot,
         Heroi heroi
     ) {

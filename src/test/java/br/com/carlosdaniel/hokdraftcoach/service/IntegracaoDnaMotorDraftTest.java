@@ -186,7 +186,7 @@ class IntegracaoDnaMotorDraftTest {
                 1,
                 List.of(1L, 2L, 3L),
                 List.of(1L, 4L, 5L),
-                List.of(new PickSemFuncaoRequest(1, 7L)),
+                List.of(new PickSemFuncaoRequest(1, 18L)),
                 List.of(
                     new PickSemFuncaoRequest(1, 31L),
                     new PickSemFuncaoRequest(2, 17L)
