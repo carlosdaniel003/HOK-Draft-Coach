@@ -46,36 +46,22 @@ jobs:
 
           path = Path("src/main/java/br/com/carlosdaniel/hokdraftcoach/service/RecomendacaoProximoPickDnaService.java")
           text = path.read_text(encoding="utf-8")
-          old = '''        return new RecomendacaoProximoPickRequest(
-              request.meuLado(),
-              ordemAlvo,
-              request.bansAzul(),
-              request.bansVermelho(),
-              request.picksAzul(),
-              request.picksVermelho(),
-              request.funcoesDaOrdem(ordemAlvo),
-              request.funcoesAliadas().stream()
-                  .filter(item -> !ordemAlvo.equals(item.ordem()))
-                  .toList()
-          );
-          '''
-          new = '''        Integer ordemAlvoFinal = ordemAlvo;
-          return new RecomendacaoProximoPickRequest(
-              request.meuLado(),
-              ordemAlvoFinal,
-              request.bansAzul(),
-              request.bansVermelho(),
-              request.picksAzul(),
-              request.picksVermelho(),
-              request.funcoesDaOrdem(ordemAlvoFinal),
-              request.funcoesAliadas().stream()
-                  .filter(item -> !ordemAlvoFinal.equals(item.ordem()))
-                  .toList()
-          );
-          '''
-          if old not in text:
-              raise SystemExit("Bloco da ordem alvo não encontrado")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          marker = "        return new RecomendacaoProximoPickRequest(\n            request.meuLado(),\n            ordemAlvo,\n"
+          replacement = "        Integer ordemAlvoFinal = ordemAlvo;\n        return new RecomendacaoProximoPickRequest(\n            request.meuLado(),\n            ordemAlvoFinal,\n"
+          if marker not in text:
+              raise SystemExit("Início do bloco da ordem alvo não encontrado")
+          text = text.replace(marker, replacement, 1)
+          text = text.replace(
+              "request.funcoesDaOrdem(ordemAlvo),",
+              "request.funcoesDaOrdem(ordemAlvoFinal),",
+              1
+          )
+          text = text.replace(
+              "!ordemAlvo.equals(item.ordem())",
+              "!ordemAlvoFinal.equals(item.ordem())",
+              1
+          )
+          path.write_text(text, encoding="utf-8")
           PY
 
       - name: Validar JavaScript
