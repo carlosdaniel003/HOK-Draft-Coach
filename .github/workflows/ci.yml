@@ -64,6 +64,31 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
+      - name: Atualizar cenário legado de função
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/test/java/br/com/carlosdaniel/hokdraftcoach/service/IntegracaoDnaMotorDraftTest.java")
+          text = path.read_text(encoding="utf-8")
+          start = text.index("    void deveManterDnaEProjecoesDepoisDoPickDoUsuario()")
+          end = text.index("    @Test", start + 10)
+          section = text[start:end]
+          old = "new PickSemFuncaoRequest(1, 7L)"
+          if old not in section:
+              raise SystemExit("Pick legado incompatível não encontrado")
+          section = section.replace(
+              old,
+              "new PickSemFuncaoRequest(1, 18L)",
+              1
+          )
+          path.write_text(
+              text[:start] + section + text[end:],
+              encoding="utf-8"
+          )
+          PY
+
       - name: Validar JavaScript
         shell: bash
         run: |
