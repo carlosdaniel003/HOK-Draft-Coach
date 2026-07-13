@@ -9,6 +9,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 concurrency:
   group: java-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -20,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: feat/backend-draft-engine
+          fetch-depth: 0
 
       - name: Configurar Java 21
         uses: actions/setup-java@v4
@@ -27,6 +33,21 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+
+      - name: Aplicar funções explícitas por slot
+        shell: bash
+        run: python3 .github/scripts/apply-team-slot-roles.py
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          node --check src/main/resources/static/js/app.js
+          node --check src/main/resources/static/js/ranked-mode.js
+          node --check src/main/resources/static/js/next-pick.js
+          node --check src/main/resources/static/js/team-roles.js
+          grep -q '>Top Lane<' src/main/resources/static/index.html
+          grep -q '>ADC<' src/main/resources/static/index.html
+          grep -q '>Suporte<' src/main/resources/static/index.html
 
       - name: Compilar e executar testes
         shell: bash
@@ -55,11 +76,11 @@ jobs:
 
           if [ "$status" -ne 0 ]; then
             echo "Maven falhou. Últimas linhas do log:"
-            tail -n 120 maven.log
+            tail -n 160 maven.log
             exit "$status"
           fi
 
-          tail -n 30 maven.log
+          tail -n 40 maven.log
 
       - name: Construir imagem da Vercel
         run: docker build --file Dockerfile.vercel --tag hok-draft-coach:ci .
@@ -95,3 +116,18 @@ jobs:
           docker logs hok-draft-coach-ci
           docker rm --force hok-draft-coach-ci
           exit 1
+
+      - name: Publicar funções por slot validadas
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/main src/test docs
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração nova para publicar."
+            exit 0
+          fi
+
+          git commit -m "feat: assign explicit roles to allied draft slots"
+          git push origin HEAD:feat/backend-draft-engine
