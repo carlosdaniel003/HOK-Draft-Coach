@@ -9,11 +9,8 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 concurrency:
-  group: java-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  group: java-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -23,9 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: feat/backend-draft-engine
-          fetch-depth: 0
 
       - name: Configurar Java 21
         uses: actions/setup-java@v4
@@ -33,9 +27,6 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-
-      - name: Aplicar plano de resposta contextual
-        run: python3 .github/scripts/improve-response-plan.py
 
       - name: Compilar e executar testes
         shell: bash
@@ -64,11 +55,11 @@ jobs:
 
           if [ "$status" -ne 0 ]; then
             echo "Maven falhou. Últimas linhas do log:"
-            tail -n 160 maven.log
+            tail -n 120 maven.log
             exit "$status"
           fi
 
-          tail -n 40 maven.log
+          tail -n 30 maven.log
 
       - name: Construir imagem da Vercel
         run: docker build --file Dockerfile.vercel --tag hok-draft-coach:ci .
@@ -104,23 +95,3 @@ jobs:
           docker logs hok-draft-coach-ci
           docker rm --force hok-draft-coach-ci
           exit 1
-
-      - name: Publicar plano de resposta validado
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          if git diff --quiet && git diff --cached --quiet; then
-            echo "Nenhuma alteração funcional pendente."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaService.java \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaComposicaoService.java \
-            src/main/java/br/com/carlosdaniel/hokdraftcoach/service/PlanoRespostaAmeaca.java \
-            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/AnaliseAmeacaBlindPickServiceTest.java \
-            src/test/java/br/com/carlosdaniel/hokdraftcoach/service/PlanoRespostaAmeacaTest.java
-          git commit -m "feat: make enemy response plans contextual"
-          git push origin HEAD:feat/backend-draft-engine
