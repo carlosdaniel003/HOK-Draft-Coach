@@ -90,24 +90,30 @@ class AnaliseAmeacaBlindPickServiceTest {
     }
 
     @Test
-    void devePriorizarQuebrarAJanelaDeLianPoAntesDoDanoDeMarcoPolo() {
+    void deveResponderAoCarregadorSemMandarEliminarALinhaDeFrente() {
         AnaliseAmeacasResponse ameacas = motor.analisarAmeacas(
             List.of("Marco Polo", "Lian Po", "Dolia")
         );
 
-        AlvoPrioritarioAmeacaResponse lianPo = ameacas.alvosPrioritarios()
-            .stream()
-            .filter(alvo -> alvo.heroi().equals("Lian Po"))
-            .findFirst()
-            .orElseThrow();
         AlvoPrioritarioAmeacaResponse marcoPolo = ameacas.alvosPrioritarios()
             .stream()
             .filter(alvo -> alvo.heroi().equals("Marco Polo"))
             .findFirst()
             .orElseThrow();
+        AlvoPrioritarioAmeacaResponse lianPo = ameacas.alvosPrioritarios()
+            .stream()
+            .filter(alvo -> alvo.heroi().equals("Lian Po"))
+            .findFirst()
+            .orElseThrow();
 
-        assertTrue(lianPo.prioridade() >= marcoPolo.prioridade());
-        assertTrue(ameacas.planoResposta().contains("Lian Po"));
+        assertTrue(marcoPolo.prioridade() > lianPo.prioridade());
+        assertTrue(ameacas.planoResposta().contains("Marco Polo"));
+        assertTrue(
+            ameacas.planoResposta().contains(
+                "em vez de descarregar tudo na linha de frente"
+            )
+        );
+        assertFalse(ameacas.planoResposta().startsWith("Embora "));
     }
 
     @Test

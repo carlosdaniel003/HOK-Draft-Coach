@@ -152,10 +152,9 @@ public class AnaliseAmeacaService {
             eloFracoResposta,
             perfis,
             alvos,
-            planoResposta(
+            PlanoRespostaAmeaca.criar(
                 maiorAmeacaResposta,
-                alvos,
-                dna
+                alvos
             )
         );
     }
@@ -351,42 +350,76 @@ public class AnaliseAmeacaService {
         PerfilBruto eloFraco,
         List<SinergiaGrupoResponse> sinergias
     ) {
+        boolean conectaIniciador = conecta(sinergias, iniciador, ameaca);
+        boolean conectaHabilitador = conecta(sinergias, habilitador, ameaca);
+        boolean conectaProtetor = conecta(sinergias, protetor, ameaca);
+        boolean ameacaProtegida = conectaIniciador
+            || conectaHabilitador
+            || conectaProtetor;
+
         List<AlvoPrioritarioAmeacaResponse> candidatos = List.of(
             alvo(
                 ameaca,
                 PapelAmeaca.AMEACA_PRINCIPAL,
-                ameaca.potencialVitoria(),
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.AMEACA_PRINCIPAL,
+                    ameaca.potencialVitoria(),
+                    ameaca.vulnerabilidade(),
+                    false,
+                    ameacaProtegida
+                ),
                 ameaca,
                 sinergias
             ),
             alvo(
                 iniciador,
                 PapelAmeaca.INICIADOR,
-                iniciador.iniciacao()
-                    + (conecta(sinergias, iniciador, ameaca) ? 12 : 0),
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.INICIADOR,
+                    iniciador.iniciacao(),
+                    iniciador.vulnerabilidade(),
+                    conectaIniciador,
+                    false
+                ),
                 ameaca,
                 sinergias
             ),
             alvo(
                 habilitador,
                 PapelAmeaca.HABILITADOR,
-                habilitador.habilitacao()
-                    + (conecta(sinergias, habilitador, ameaca) ? 12 : 0),
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.HABILITADOR,
+                    habilitador.habilitacao(),
+                    habilitador.vulnerabilidade(),
+                    conectaHabilitador,
+                    false
+                ),
                 ameaca,
                 sinergias
             ),
             alvo(
                 protetor,
                 PapelAmeaca.PROTETOR,
-                protetor.protecao()
-                    + (conecta(sinergias, protetor, ameaca) ? 8 : 0),
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.PROTETOR,
+                    protetor.protecao(),
+                    protetor.vulnerabilidade(),
+                    conectaProtetor,
+                    false
+                ),
                 ameaca,
                 sinergias
             ),
             alvo(
                 eloFraco,
                 PapelAmeaca.ELO_FRACO,
-                eloFraco.vulnerabilidade(),
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.ELO_FRACO,
+                    eloFraco.vulnerabilidade(),
+                    eloFraco.vulnerabilidade(),
+                    false,
+                    false
+                ),
                 ameaca,
                 sinergias
             )
@@ -490,29 +523,6 @@ public class AnaliseAmeacaService {
             }
         }
         return List.copyOf(dimensoes);
-    }
-
-    private String planoResposta(
-        PerfilAmeacaHeroiResponse ameaca,
-        List<AlvoPrioritarioAmeacaResponse> alvos,
-        DnaComposicao dna
-    ) {
-        if (alvos.isEmpty() || ameaca == null) {
-            return "Não foi possível estabelecer uma prioridade de resposta.";
-        }
-        AlvoPrioritarioAmeacaResponse principal = alvos.getFirst();
-        if (!principal.heroi().equals(ameaca.heroi())) {
-            return "Embora " + ameaca.heroi()
-                + " seja a maior ameaça individual, a resposta mais eficiente começa por "
-                + principal.heroi() + ", "
-                + principal.justificativa().toLowerCase(Locale.ROOT)
-                + " Neutralizar essa peça reduz a janela do carregador antes do confronto direto.";
-        }
-        return "A prioridade é limitar " + ameaca.heroi()
-            + " diretamente, impedindo que alcance sua janela de dano e escalamento. "
-            + "A composição inimiga possui "
-            + dna.valor(DimensaoEstrategica.PROTECAO)
-            + "/100 de proteção agregada, portanto o acesso deve ser coordenado.";
     }
 
     private PerfilAmeacaHeroiResponse resposta(

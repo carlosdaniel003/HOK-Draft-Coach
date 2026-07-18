@@ -305,7 +305,7 @@ public class AnaliseAmeacaComposicaoService
             eloFraco,
             perfis,
             alvos,
-            planoResposta(ameaca, alvos)
+            PlanoRespostaAmeaca.criar(ameaca, alvos)
         );
     }
 
@@ -365,61 +365,86 @@ public class AnaliseAmeacaComposicaoService
         List<SinergiaGrupoResponse> sinergias
     ) {
         List<AlvoPrioritarioAmeacaResponse> candidatos = new ArrayList<>();
-        boolean ameacaProtegida = conectado(
+        boolean conectaIniciador = iniciador != null && conectado(
             sinergias,
             ameaca.heroi(),
-            iniciador == null ? null : iniciador.heroi()
-        ) || conectado(
-            sinergias,
-            ameaca.heroi(),
-            habilitador == null ? null : habilitador.heroi()
+            iniciador.heroi()
         );
+        boolean conectaHabilitador = habilitador != null && conectado(
+            sinergias,
+            ameaca.heroi(),
+            habilitador.heroi()
+        );
+        boolean conectaProtetor = protetor != null && conectado(
+            sinergias,
+            ameaca.heroi(),
+            protetor.heroi()
+        );
+        boolean ameacaProtegida = conectaIniciador
+            || conectaHabilitador
+            || conectaProtetor;
+
         candidatos.add(alvo(
             ameaca,
             PapelAmeaca.AMEACA_PRINCIPAL,
-            ameaca.potencialVitoria() - (ameacaProtegida ? 8 : 0)
+            PlanoRespostaAmeaca.prioridade(
+                PapelAmeaca.AMEACA_PRINCIPAL,
+                ameaca.potencialVitoria(),
+                ameaca.vulnerabilidade(),
+                false,
+                ameacaProtegida
+            )
         ));
         if (iniciador != null) {
             candidatos.add(alvo(
                 iniciador,
                 PapelAmeaca.INICIADOR,
-                iniciador.iniciacao()
-                    + (conectado(
-                        sinergias,
-                        iniciador.heroi(),
-                        ameaca.heroi()
-                    ) ? 30 : 8)
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.INICIADOR,
+                    iniciador.iniciacao(),
+                    iniciador.vulnerabilidade(),
+                    conectaIniciador,
+                    false
+                )
             ));
         }
         if (habilitador != null) {
             candidatos.add(alvo(
                 habilitador,
                 PapelAmeaca.HABILITADOR,
-                habilitador.habilitacao()
-                    + (conectado(
-                        sinergias,
-                        habilitador.heroi(),
-                        ameaca.heroi()
-                    ) ? 22 : 5)
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.HABILITADOR,
+                    habilitador.habilitacao(),
+                    habilitador.vulnerabilidade(),
+                    conectaHabilitador,
+                    false
+                )
             ));
         }
         if (protetor != null) {
             candidatos.add(alvo(
                 protetor,
                 PapelAmeaca.PROTETOR,
-                protetor.protecao()
-                    + (conectado(
-                        sinergias,
-                        protetor.heroi(),
-                        ameaca.heroi()
-                    ) ? 10 : 0)
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.PROTETOR,
+                    protetor.protecao(),
+                    protetor.vulnerabilidade(),
+                    conectaProtetor,
+                    false
+                )
             ));
         }
         if (eloFraco != null) {
             candidatos.add(alvo(
                 eloFraco,
                 PapelAmeaca.ELO_FRACO,
-                eloFraco.vulnerabilidade()
+                PlanoRespostaAmeaca.prioridade(
+                    PapelAmeaca.ELO_FRACO,
+                    eloFraco.vulnerabilidade(),
+                    eloFraco.vulnerabilidade(),
+                    false,
+                    false
+                )
             ));
         }
 
@@ -505,24 +530,6 @@ public class AnaliseAmeacaComposicaoService
                 DimensaoEstrategica.ALCANCE
             );
         };
-    }
-
-    private String planoResposta(
-        PerfilAmeacaHeroiResponse ameaca,
-        List<AlvoPrioritarioAmeacaResponse> alvos
-    ) {
-        if (alvos.isEmpty()) {
-            return "Não foi possível estabelecer uma prioridade de resposta.";
-        }
-        AlvoPrioritarioAmeacaResponse primeiro = alvos.getFirst();
-        if (!mesmoHeroi(primeiro.heroi(), ameaca.heroi())) {
-            return "Embora " + ameaca.heroi()
-                + " seja a maior ameaça, a resposta mais eficiente começa por "
-                + primeiro.heroi() + ". " + primeiro.justificativa()
-                + " Neutralizar essa peça reduz a janela do carregador antes do confronto direto.";
-        }
-        return "A prioridade é limitar " + ameaca.heroi()
-            + " diretamente antes que alcance sua janela de dano e escalamento.";
     }
 
     private PerfilAmeacaHeroiResponse buscarPerfil(
