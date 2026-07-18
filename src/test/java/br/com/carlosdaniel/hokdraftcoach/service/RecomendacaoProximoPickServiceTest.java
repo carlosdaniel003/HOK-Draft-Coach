@@ -38,14 +38,14 @@ class RecomendacaoProximoPickServiceTest {
     }
 
     @Test
-    void deveRecomendarHeroiQuandoForMinhaVez() {
+    void devePriorizarPrimeiroSlotAliadoAbertoNaRodadaDupla() {
         RecomendacaoProximoPickResponse resposta = service.recomendar(
             cenarioPrincipal(LadoDraft.AZUL, 3)
         );
-
-        assertEquals("MINHA_VEZ", resposta.estadoDraft());
-        assertTrue(resposta.ehMinhaVez());
+        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+        assertFalse(resposta.ehMinhaVez());
         assertEquals("B3", resposta.meuSlot());
+        assertTrue(resposta.mensagem().contains("B2"));
         assertEquals(LadoDraft.AZUL, resposta.proximoLado());
         assertTrue(resposta.proximosSlots().contains("B3"));
         assertNotNull(resposta.recomendacaoPrincipal());
@@ -70,7 +70,7 @@ class RecomendacaoProximoPickServiceTest {
             cenarioPrincipal(LadoDraft.VERMELHO, 5)
         );
 
-        assertEquals("PLANEJAMENTO", resposta.estadoDraft());
+        assertEquals("AGUARDANDO_INIMIGO", resposta.estadoDraft());
         assertFalse(resposta.ehMinhaVez());
         assertEquals("R5", resposta.meuSlot());
         assertNotNull(resposta.recomendacaoPrincipal());
@@ -78,6 +78,18 @@ class RecomendacaoProximoPickServiceTest {
             resposta.avisos().stream()
                 .anyMatch(aviso -> aviso.contains("preventiva"))
         );
+    }
+
+    @Test
+    void deveContinuarRecomendandoParaAliadoDepoisDoMeuPick() {
+        RecomendacaoProximoPickResponse resposta = service.recomendar(
+            cenarioPrincipal(LadoDraft.AZUL, 1)
+        );
+
+        assertEquals("VEZ_ALIADA", resposta.estadoDraft());
+        assertFalse(resposta.ehMinhaVez());
+        assertNotNull(resposta.recomendacaoPrincipal());
+        assertTrue(resposta.mensagem().contains("B2"));
     }
 
     @Test
@@ -97,6 +109,45 @@ class RecomendacaoProximoPickServiceTest {
         assertEquals("FASE_DE_BANS", resposta.estadoDraft());
         assertNull(resposta.recomendacaoPrincipal());
         assertTrue(resposta.alternativas().isEmpty());
+    }
+
+    @Test
+    void devePermitirMesmoHeroiBanidoUmaVezPorEquipe() {
+        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 2L, 3L),
+            List.of(1L, 4L, 5L),
+            List.of(),
+            List.of(),
+            List.of(Rota.MID_LANE)
+        );
+
+        RecomendacaoProximoPickResponse resposta = service.recomendar(request);
+
+        assertEquals("MINHA_VEZ", resposta.estadoDraft());
+        assertNotNull(resposta.recomendacaoPrincipal());
+        assertFalse(resposta.recomendacaoPrincipal().heroiId().equals(1L));
+    }
+
+    @Test
+    void deveRejeitarBanRepetidoNaMesmaEquipe() {
+        RecomendacaoProximoPickRequest request = new RecomendacaoProximoPickRequest(
+            LadoDraft.AZUL,
+            1,
+            List.of(1L, 1L, 2L),
+            List.of(3L, 4L, 5L),
+            List.of(),
+            List.of(),
+            List.of()
+        );
+
+        RegraNegocioException erro = assertThrows(
+            RegraNegocioException.class,
+            () -> service.recomendar(request)
+        );
+
+        assertTrue(erro.getMessage().contains("lado azul"));
     }
 
     @Test

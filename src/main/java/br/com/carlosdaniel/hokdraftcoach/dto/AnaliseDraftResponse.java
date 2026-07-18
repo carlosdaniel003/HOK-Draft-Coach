@@ -8,7 +8,25 @@ public record AnaliseDraftResponse(
     String versaoDados,
     Rota rotaAlvo,
     int totalCandidatos,
+    DiagnosticoComposicaoResponse diagnosticoComposicao,
     List<RecomendacaoDraftResponse> recomendacoes,
     List<String> avisos
 ) {
+
+    public AnaliseDraftResponse(
+        String versaoDados,
+        Rota rotaAlvo,
+        int totalCandidatos,
+        List<RecomendacaoDraftResponse> recomendacoes,
+        List<String> avisos
+    ) {
+        this(
+            versaoDados,
+            rotaAlvo,
+            totalCandidatos,
+            null,
+            recomendacoes,
+            avisos
+        );
+    }
 }

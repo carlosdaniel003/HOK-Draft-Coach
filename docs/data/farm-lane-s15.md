@@ -37,7 +37,7 @@ A tier list não é uma classificação oficial da Tencent. Por isso, cada regis
 | Fang | Li Yuanfang | Atirador | Farm, Jungle | B |
 | Ser do Fluxo (Atirador) | Flowborn (Marksman), Flowborn Atirador | Atirador | Farm | B |
 | Shouyue | Baili Shouyue | Atirador | Farm | B |
-| Agu | Agudo | Atirador | Jungle, Farm | C |
+| Agu | Agu | Atirador | Jungle, Farm | C |
 | Huang Zhong | — | Atirador | Farm | C |
 | Meng Ya | — | Atirador | Farm | C |
 
@@ -48,7 +48,7 @@ O nome apresentado pelo sistema prioriza a localização informada pelo jogador 
 Exemplos:
 
 - `Loong` também pode aparecer como `Ao'yin`.
-- `Agu` também pode aparecer como `Agudo`.
+- `Agu` também pode aparecer como `Agu`.
 - `Ser do Fluxo (Atirador)` também pode aparecer como `Flowborn (Marksman)`.
 - `Consorte Yu` também pode aparecer como `Consort Yu`.
 

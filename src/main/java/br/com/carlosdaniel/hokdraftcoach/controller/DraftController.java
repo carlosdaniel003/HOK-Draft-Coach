@@ -11,8 +11,9 @@ import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.RecomendacaoProximoPickResponse;
-import br.com.carlosdaniel.hokdraftcoach.service.DraftService;
+import br.com.carlosdaniel.hokdraftcoach.service.DraftDnaService;
 import br.com.carlosdaniel.hokdraftcoach.service.InferenciaFuncoesService;
+import br.com.carlosdaniel.hokdraftcoach.service.RecomendacaoProximoPickDnaService;
 import br.com.carlosdaniel.hokdraftcoach.service.RecomendacaoProximoPickService;
 import jakarta.validation.Valid;
 
@@ -20,25 +21,28 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/draft")
 public class DraftController {
 
-    private final DraftService draftService;
+    private final DraftDnaService draftDnaService;
     private final InferenciaFuncoesService inferenciaFuncoesService;
-    private final RecomendacaoProximoPickService recomendacaoProximoPickService;
+    private final RecomendacaoProximoPickService proximoPickRapidoService;
+    private final RecomendacaoProximoPickDnaService proximoPickDnaService;
 
     public DraftController(
-        DraftService draftService,
+        DraftDnaService draftDnaService,
         InferenciaFuncoesService inferenciaFuncoesService,
-        RecomendacaoProximoPickService recomendacaoProximoPickService
+        RecomendacaoProximoPickService proximoPickRapidoService,
+        RecomendacaoProximoPickDnaService proximoPickDnaService
     ) {
-        this.draftService = draftService;
+        this.draftDnaService = draftDnaService;
         this.inferenciaFuncoesService = inferenciaFuncoesService;
-        this.recomendacaoProximoPickService = recomendacaoProximoPickService;
+        this.proximoPickRapidoService = proximoPickRapidoService;
+        this.proximoPickDnaService = proximoPickDnaService;
     }
 
     @PostMapping("/recomendar")
     public AnaliseDraftResponse recomendar(
         @Valid @RequestBody DraftRequest request
     ) {
-        return draftService.recomendar(request);
+        return draftDnaService.recomendar(request);
     }
 
     @PostMapping("/inferir-funcoes")
@@ -48,10 +52,17 @@ public class DraftController {
         return inferenciaFuncoesService.inferir(request);
     }
 
+    @PostMapping("/recomendar-proximo-pick/rapido")
+    public RecomendacaoProximoPickResponse recomendarProximoPickRapido(
+        @Valid @RequestBody RecomendacaoProximoPickRequest request
+    ) {
+        return proximoPickRapidoService.recomendar(request);
+    }
+
     @PostMapping("/recomendar-proximo-pick")
     public RecomendacaoProximoPickResponse recomendarProximoPick(
         @Valid @RequestBody RecomendacaoProximoPickRequest request
     ) {
-        return recomendacaoProximoPickService.recomendar(request);
+        return proximoPickDnaService.recomendar(request);
     }
 }

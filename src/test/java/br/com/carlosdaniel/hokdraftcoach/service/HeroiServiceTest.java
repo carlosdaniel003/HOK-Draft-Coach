@@ -53,7 +53,7 @@ class HeroiServiceTest {
     }
 
     @Test
-    void deveCadastrarOsVinteHeroisAtuaisDaFarmLane() {
+    void deveCadastrarOsDezenoveHeroisAtuaisDaFarmLane() {
         Set<String> esperados = Set.of(
             "Luara",
             "Agu",
@@ -61,7 +61,6 @@ class HeroiServiceTest {
             "Loong",
             "Arli",
             "Chano",
-            "Chicha",
             "Consorte Yu",
             "Di Renjie",
             "Erin",
@@ -83,7 +82,7 @@ class HeroiServiceTest {
             .map(Heroi::getNome)
             .collect(Collectors.toSet());
 
-        assertEquals(20, cadastrados.size());
+        assertEquals(19, cadastrados.size());
         assertEquals(esperados, cadastrados);
     }
 
@@ -100,9 +99,10 @@ class HeroiServiceTest {
         assertTrue(chano.podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(chano.podeJogarNaRota(Rota.JUNGLE));
 
+        assertEquals(Rota.JUNGLE, chicha.getRota());
         assertTrue(chicha.podeJogarNaRota(Rota.CLASH_LANE));
         assertTrue(chicha.podeJogarNaRota(Rota.JUNGLE));
-        assertTrue(chicha.podeJogarNaRota(Rota.FARM_LANE));
+        assertFalse(chicha.podeJogarNaRota(Rota.FARM_LANE));
 
         assertTrue(fang.podeJogarNaRota(Rota.FARM_LANE));
         assertTrue(fang.podeJogarNaRota(Rota.JUNGLE));
@@ -132,17 +132,17 @@ class HeroiServiceTest {
             ));
 
         assertEquals(1L, quantidadePorTier.get(TierMeta.S));
-        assertEquals(9L, quantidadePorTier.get(TierMeta.A));
+        assertEquals(8L, quantidadePorTier.get(TierMeta.A));
         assertEquals(7L, quantidadePorTier.get(TierMeta.B));
         assertEquals(3L, quantidadePorTier.get(TierMeta.C));
 
         heroiService.listarPorRota(Rota.FARM_LANE).forEach(heroi -> {
             assertEquals(
-                "S15-HOK-PLUS-2.0",
+                "S15-HOK-PLUS-2.1",
                 heroi.getDadosMeta().versao()
             );
             assertEquals(
-                LocalDate.of(2026, 7, 2),
+                LocalDate.of(2026, 7, 10),
                 heroi.getDadosMeta().atualizadoEm()
             );
             assertEquals(

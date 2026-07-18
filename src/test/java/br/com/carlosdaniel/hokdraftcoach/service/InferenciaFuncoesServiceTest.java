@@ -3,6 +3,7 @@ package br.com.carlosdaniel.hokdraftcoach.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import br.com.carlosdaniel.hokdraftcoach.dto.FuncaoSlotRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaEquipeResponse;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesRequest;
 import br.com.carlosdaniel.hokdraftcoach.dto.InferenciaFuncoesResponse;
@@ -103,6 +105,19 @@ class InferenciaFuncoesServiceTest {
     }
 
     @Test
+    void deveReutilizarInferenciaQuandoODraftNaoMudou() {
+        InferenciaFuncoesRequest request = request(
+            List.of(20L, 14L),
+            List.of(17L)
+        );
+
+        InferenciaFuncoesResponse primeira = service.inferir(request);
+        InferenciaFuncoesResponse segunda = service.inferir(request);
+
+        assertSame(primeira, segunda);
+    }
+
+    @Test
     void deveRejeitarMesmoHeroiNosDoisLados() {
         InferenciaFuncoesRequest request = request(
             List.of(20L),
@@ -136,4 +151,39 @@ class InferenciaFuncoesServiceTest {
 
         return picks;
     }
+
+    @Test
+    void deveFixarFuncaoInformadaParaHeroiFlex() {
+        InferenciaFuncoesRequest request = new InferenciaFuncoesRequest(
+            List.of(new PickSemFuncaoRequest(1, 20L)),
+            List.of(),
+            List.of(new FuncaoSlotRequest(1, Rota.JUNGLE)),
+            List.of()
+        );
+
+        InferenciaEquipeResponse azul = service.inferir(request).equipeAzul();
+
+        assertEquals(1, azul.totalHipoteses());
+        assertEquals(
+            Rota.JUNGLE,
+            azul.hipoteses().getFirst().atribuicoes().getFirst().rota()
+        );
+        assertTrue(azul.ambiguidades().getFirst().funcaoConfirmada());
+    }
+
+    @Test
+    void deveInvalidarHeroiForaDaFuncaoInformada() {
+        InferenciaFuncoesRequest request = new InferenciaFuncoesRequest(
+            List.of(new PickSemFuncaoRequest(1, 20L)),
+            List.of(),
+            List.of(new FuncaoSlotRequest(1, Rota.FARM_LANE)),
+            List.of()
+        );
+
+        InferenciaEquipeResponse azul = service.inferir(request).equipeAzul();
+
+        assertFalse(azul.composicaoCompativel());
+        assertTrue(azul.hipoteses().isEmpty());
+    }
+
 }

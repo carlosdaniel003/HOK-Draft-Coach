@@ -1,0 +1,272 @@
+package br.com.carlosdaniel.hokdraftcoach.repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
+
+import br.com.carlosdaniel.hokdraftcoach.model.AtributosHeroi;
+import br.com.carlosdaniel.hokdraftcoach.model.ClasseHeroi;
+import br.com.carlosdaniel.hokdraftcoach.model.DadosMetaHeroi;
+import br.com.carlosdaniel.hokdraftcoach.model.Heroi;
+import br.com.carlosdaniel.hokdraftcoach.model.Rota;
+import br.com.carlosdaniel.hokdraftcoach.model.TierMeta;
+import br.com.carlosdaniel.hokdraftcoach.model.TipoDano;
+
+@Repository
+public class CatalogoClashRepository {
+
+    public static final String VERSAO_META = "S15-HOK-PLUS-2.0";
+    public static final LocalDate DATA_META = LocalDate.of(2026, 7, 2);
+    public static final String FONTE_META = "HOKSTATS_TIER_LIST";
+
+    private final List<Heroi> tops = List.of(
+        t(200L, "Ata", List.of(), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Tanque-lutador de controle de terreno e iniciação",
+            3, TipoDano.FISICO, new AtributosHeroi(8, 9, 5, 3, 6, 5), TierMeta.C,
+            "tanque", "iniciação", "controle de terreno", "objetivos", "linha de frente"),
+        t(201L, "Devara", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Lutador de energia, escudo, controle e trocas prolongadas",
+            3, TipoDano.MISTO, new AtributosHeroi(7, 8, 8, 3, 9, 8), TierMeta.S,
+            "escudo", "controle", "anti-controle", "duelo", "lutas longas"),
+        t(202L, "Fatih", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Berserker de roubo de vida e dano sustentado",
+            4, TipoDano.FISICO, new AtributosHeroi(4, 7, 6, 2, 9, 7), TierMeta.C,
+            "sustentação", "duelo", "roubo de vida", "anti-controle", "lutas longas"),
+        t(203L, "Florentino", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Duelista técnico de reposicionamento, sustain e execução",
+            5, TipoDano.FISICO, new AtributosHeroi(6, 6, 10, 3, 10, 9), TierMeta.S,
+            "duelo", "mobilidade", "sustentação", "execução", "alto teto mecânico"),
+        t(204L, "Ser do Fluxo (Tanque)", List.of("Flowborn (Tank)", "Flowborn Tank"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE),
+            "Tanque adaptável de engage, controle e absorção de dano",
+            2, TipoDano.MISTO, new AtributosHeroi(9, 10, 6, 3, 6, 6), TierMeta.C,
+            "tanque", "engage", "controle", "linha de frente", "adaptação"),
+        t(205L, "Lapulapu", List.of("Lapu-Lapu", "Lapu Lapu"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque de iniciação e proteção com controle em área",
+            2, TipoDano.FISICO, new AtributosHeroi(8, 9, 5, 3, 4, 5), TierMeta.C,
+            "tanque", "iniciação", "proteção", "controle em área", "flex"),
+        t(206L, "Allain", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Duelista de dano misto, invulnerabilidade e escalamento",
+            3, TipoDano.MISTO, new AtributosHeroi(3, 7, 7, 2, 10, 8), TierMeta.C,
+            "duelo", "dano misto", "invulnerabilidade", "escalamento", "anti-tanque"),
+        t(207L, "Arthur", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador resistente de silêncio e iniciação simples",
+            1, TipoDano.MISTO, new AtributosHeroi(7, 9, 5, 2, 6, 6), TierMeta.B,
+            "linha de frente", "silêncio", "iniciação", "anti-mobilidade", "segurança"),
+        t(208L, "Augran", List.of(), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de execução, sustentação e pressão frontal",
+            3, TipoDano.MISTO, new AtributosHeroi(6, 9, 8, 3, 10, 9), TierMeta.S,
+            "execução", "sustentação", "anti-tanque", "linha de frente", "objetivos"),
+        t(209L, "Bai Qi", List.of("Baiqi"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE),
+            "Tanque de provocação, cura e iniciação em área",
+            2, TipoDano.FISICO, new AtributosHeroi(10, 10, 6, 2, 6, 5), TierMeta.C,
+            "tanque", "provocação", "cura", "iniciação", "controle em área"),
+        t(210L, "Biron", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Lutador de pressão inicial, escudo e sustentação",
+            3, TipoDano.FISICO, new AtributosHeroi(7, 8, 7, 2, 9, 8), TierMeta.B,
+            "escudo", "sustentação", "início de jogo", "controle", "duelo"),
+        t(211L, "Charlotte", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Duelista móvel de redução de dano e combos contínuos",
+            4, TipoDano.FISICO, new AtributosHeroi(5, 7, 8, 3, 9, 7), TierMeta.B,
+            "duelo", "mobilidade", "redução de dano", "dano sustentado", "flanco"),
+        t(212L, "Chicha", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutadora de Top Lane e selva com velocidade de ataque e limpeza",
+            2, TipoDano.FISICO, new AtributosHeroi(5, 7, 8, 4, 10, 7), TierMeta.A,
+            "velocidade de ataque", "limpeza", "segundo engage", "duelo", "flex"),
+        t(213L, "Diaochan", List.of(), ClasseHeroi.MAGO,
+            List.of(Rota.CLASH_LANE, Rota.MID_LANE),
+            "Maga duelista de mobilidade, invulnerabilidade e dano verdadeiro",
+            5, TipoDano.MAGICO, new AtributosHeroi(5, 4, 10, 5, 10, 8), TierMeta.B,
+            "dano verdadeiro", "mobilidade", "invulnerabilidade", "duelo", "lutas longas"),
+        t(214L, "Donghuang", List.of("Donghuang Taiyi"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque de sustain e supressão inevitável",
+            3, TipoDano.MAGICO, new AtributosHeroi(10, 9, 4, 3, 6, 5), TierMeta.A,
+            "supressão", "sustentação", "anti-dive", "pickoff", "controle inevitável"),
+        t(215L, "Dun", List.of("Xiahou Dun"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque flexível de controle, escudo e sustain",
+            2, TipoDano.MISTO, new AtributosHeroi(8, 9, 5, 3, 6, 5), TierMeta.A,
+            "tanque", "controle", "escudo", "sustentação", "flex"),
+        t(216L, "Fuzi", List.of("Old Master"), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Duelista de aprisionamento, split push e dano sustentado",
+            3, TipoDano.FISICO, new AtributosHeroi(7, 7, 7, 2, 10, 6), TierMeta.C,
+            "duelo", "aprisionamento", "split push", "dano sustentado", "anti-carry"),
+        t(217L, "Guan Yu", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Flanqueador de alta rotação e deslocamentos repetidos",
+            5, TipoDano.FISICO, new AtributosHeroi(9, 7, 10, 3, 7, 9), TierMeta.C,
+            "flanco", "rotação", "deslocamento", "mobilidade", "engage"),
+        t(218L, "Heino", List.of(), ClasseHeroi.MAGO,
+            List.of(Rota.CLASH_LANE, Rota.MID_LANE),
+            "Mago de alcance, sustain e manipulação temporal",
+            4, TipoDano.MAGICO, new AtributosHeroi(5, 6, 7, 8, 8, 7), TierMeta.B,
+            "poke", "sustentação", "tempo", "alcance", "flex"),
+        t(219L, "Kaizer", List.of("Kaiser"), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de transformação, duelo e pressão sobre carregadores",
+            2, TipoDano.FISICO, new AtributosHeroi(4, 9, 7, 2, 9, 9), TierMeta.A,
+            "duelo", "transformação", "linha de frente", "explosão", "anti-carry"),
+        t(220L, "Li Xin", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Lutador de duas formas, pressão lateral e alcance variável",
+            4, TipoDano.FISICO, new AtributosHeroi(6, 7, 8, 6, 9, 8), TierMeta.S,
+            "duas formas", "split push", "poke", "anti-controle", "snowball"),
+        t(221L, "Lian Po", List.of(), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque anti-controle de múltiplas entradas e deslocamentos",
+            3, TipoDano.FISICO, new AtributosHeroi(10, 10, 6, 3, 4, 6), TierMeta.A,
+            "tanque", "iniciação", "controle em área", "anti-controle", "flex"),
+        t(222L, "Liu Bang", List.of(), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Protetor global de split push e superioridade numérica",
+            3, TipoDano.MAGICO, new AtributosHeroi(6, 9, 7, 3, 5, 5), TierMeta.C,
+            "proteção global", "macro", "split push", "escudo", "flex"),
+        t(223L, "Lu Bu", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Juggernaut de dano verdadeiro e engage em área",
+            3, TipoDano.MISTO, new AtributosHeroi(7, 8, 6, 3, 9, 8), TierMeta.B,
+            "dano verdadeiro", "anti-tanque", "engage", "linha de frente", "lutas longas"),
+        t(224L, "Mayene", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutadora de combos, controle e mobilidade",
+            5, TipoDano.FISICO, new AtributosHeroi(8, 6, 9, 3, 8, 8), TierMeta.C,
+            "combos", "controle", "mobilidade", "duelo", "flanco"),
+        t(225L, "Menki", List.of("Meng Qi"), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador resistente de escudos, dano misto e controle de espaço",
+            3, TipoDano.MISTO, new AtributosHeroi(6, 9, 5, 3, 9, 7), TierMeta.C,
+            "escudo", "dano misto", "linha de frente", "duelo", "split push"),
+        t(226L, "Mi Yue", List.of(), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Maga-lutadora de sustain, duelo e pressão lateral",
+            4, TipoDano.MAGICO, new AtributosHeroi(4, 7, 8, 5, 9, 6), TierMeta.B,
+            "sustentação", "duelo", "split push", "dano mágico", "invulnerabilidade"),
+        t(227L, "Mulan", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Duelista de duas armas, silêncio e burst",
+            5, TipoDano.FISICO, new AtributosHeroi(7, 6, 9, 3, 8, 10), TierMeta.C,
+            "duas formas", "silêncio", "explosão", "duelo", "flanco"),
+        t(228L, "Musashi", List.of("Miyamoto Musashi"), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de anti-cura, bloqueio de projéteis e foco em carry",
+            3, TipoDano.FISICO, new AtributosHeroi(6, 8, 7, 2, 8, 9), TierMeta.B,
+            "anti-cura", "bloqueio de projéteis", "duelo", "anti-carry", "dive"),
+        t(229L, "Nezha", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE),
+            "Lutador global de anti-cura e mergulho direcionado",
+            3, TipoDano.FISICO, new AtributosHeroi(6, 8, 10, 2, 8, 8), TierMeta.C,
+            "global", "anti-cura", "dive", "anti-carry", "rotação"),
+        t(230L, "Sun Ce", List.of(), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador-tanque de iniciação global e controle em cadeia",
+            3, TipoDano.FISICO, new AtributosHeroi(9, 8, 9, 3, 7, 8), TierMeta.B,
+            "iniciação global", "controle", "linha de frente", "rotação", "gank"),
+        t(231L, "Ukyo Tachibana", List.of("Ukyo"), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Assassino-lutador de poke curto, controle e burst",
+            4, TipoDano.FISICO, new AtributosHeroi(7, 5, 7, 5, 6, 9), TierMeta.C,
+            "poke", "controle", "explosão", "duelo", "início de jogo"),
+        t(232L, "Umbrosa", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutadora de dano sustentado, cura e ressurreição",
+            2, TipoDano.FISICO, new AtributosHeroi(5, 8, 7, 3, 10, 7), TierMeta.C,
+            "sustentação", "ressurreição", "dano sustentado", "linha de frente", "duelo"),
+        t(233L, "Wuyan", List.of("Zhong Wuyan"), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutadora-tanque de petrificação e explosão em área",
+            2, TipoDano.FISICO, new AtributosHeroi(9, 8, 6, 2, 7, 8), TierMeta.C,
+            "petrificação", "controle", "linha de frente", "dano em área", "gank"),
+        t(234L, "Xiang Yu", List.of(), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque de deslocamento, mitigação e proteção contra dive",
+            2, TipoDano.FISICO, new AtributosHeroi(8, 10, 5, 3, 5, 6), TierMeta.B,
+            "tanque", "deslocamento", "proteção", "anti-dive", "flex"),
+        t(235L, "Yang Jian", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de execução, sustain e perseguição de alvos marcados",
+            4, TipoDano.MISTO, new AtributosHeroi(6, 7, 8, 4, 8, 9), TierMeta.C,
+            "execução", "sustentação", "perseguição", "duelo", "dano verdadeiro"),
+        t(236L, "Yao", List.of(), ClasseHeroi.HIBRIDO,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Assassino-lutador de combos, mobilidade e dano retardado",
+            4, TipoDano.FISICO, new AtributosHeroi(5, 6, 9, 3, 8, 8), TierMeta.C,
+            "combos", "mobilidade", "dano retardado", "duelo", "flanco"),
+        t(237L, "Zhuangzi", List.of("Zhuang Zhou"), ClasseHeroi.TANQUE,
+            List.of(Rota.CLASH_LANE, Rota.ROAMING),
+            "Tanque anti-controle de dano mágico prolongado",
+            2, TipoDano.MAGICO, new AtributosHeroi(7, 9, 6, 4, 7, 5), TierMeta.B,
+            "anti-controle", "tanque", "dano mágico", "sustentação", "proteção"),
+        t(238L, "Dharma", List.of(), ClasseHeroi.LUTADOR,
+            List.of(Rota.CLASH_LANE, Rota.JUNGLE),
+            "Lutador de controle contra paredes, burst e iniciação",
+            3, TipoDano.FISICO, new AtributosHeroi(9, 7, 7, 2, 7, 9), TierMeta.C,
+            "controle", "parede", "iniciação", "explosão", "pickoff")
+    );
+
+    public List<Heroi> listarTodos() {
+        return tops;
+    }
+
+    public Optional<Heroi> buscarPorNome(String nome) {
+        return tops.stream()
+            .filter(heroi -> heroi.correspondeAoNome(nome))
+            .findFirst();
+    }
+
+    public Optional<Heroi> buscarPorId(Long id) {
+        return tops.stream()
+            .filter(heroi -> heroi.getId().equals(id))
+            .findFirst();
+    }
+
+    private Heroi t(
+        Long id,
+        String nome,
+        List<String> aliases,
+        ClasseHeroi classe,
+        List<Rota> rotasPossiveis,
+        String estilo,
+        int dificuldade,
+        TipoDano tipoDano,
+        AtributosHeroi atributos,
+        TierMeta tier,
+        String... caracteristicas
+    ) {
+        return new Heroi(
+            id,
+            nome,
+            aliases,
+            classe,
+            Rota.CLASH_LANE,
+            rotasPossiveis,
+            estilo,
+            dificuldade,
+            tipoDano,
+            atributos,
+            List.of(caracteristicas),
+            new DadosMetaHeroi(
+                tier,
+                VERSAO_META,
+                DATA_META,
+                FONTE_META,
+                false
+            )
+        );
+    }
+}

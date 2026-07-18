@@ -94,7 +94,13 @@ public class RecomendacaoProximoPickService {
         InferenciaFuncoesResponse inferencia = inferenciaFuncoesService.inferir(
             new InferenciaFuncoesRequest(
                 request.picksAzul(),
-                request.picksVermelho()
+                request.picksVermelho(),
+                request.meuLado() == LadoDraft.AZUL
+                    ? request.funcoesDaEquipe()
+                    : List.of(),
+                request.meuLado() == LadoDraft.VERMELHO
+                    ? request.funcoesDaEquipe()
+                    : List.of()
             )
         );
 
@@ -127,18 +133,6 @@ public class RecomendacaoProximoPickService {
             );
         }
 
-        if (slotJaPreenchido(request)) {
-            return semRecomendacao(
-                "PICK_JA_REALIZADO",
-                "Seu slot já possui um herói registrado.",
-                request,
-                inferencia,
-                null,
-                List.of(),
-                List.of("Remova o herói do seu slot para recalcular.")
-            );
-        }
-
         EstadoRodada rodadaAtual = calcularRodadaAtual(request);
 
         if (rodadaAtual == null) {
@@ -152,6 +146,28 @@ public class RecomendacaoProximoPickService {
                 List.of()
             );
         }
+
+        Integer ordemAlvoAliada = proximaOrdemAliada(request);
+        if (ordemAlvoAliada == null) {
+            return semRecomendacao(
+                "EQUIPE_ALIADA_COMPLETA",
+                "Os cinco picks da sua equipe já foram registrados.",
+                request,
+                inferencia,
+                rodadaAtual.lado(),
+                rodadaAtual.slots(),
+                List.of(
+                    "Acompanhe os picks inimigos restantes e o plano final da composição."
+                )
+            );
+        }
+
+        boolean recomendacaoParaUsuario = ordemAlvoAliada.equals(
+            request.minhaOrdem()
+        ) && !slotJaPreenchido(request);
+        List<Rota> funcoesAlvo = request.funcoesDaOrdem(
+            ordemAlvoAliada
+        );
 
         InferenciaEquipeResponse aliados = equipe(
             inferencia,
@@ -198,7 +214,7 @@ public class RecomendacaoProximoPickService {
                 aliados,
                 inimigos,
                 inimigosSemFuncao,
-                request.funcoesPreferidas()
+                funcoesAlvo
             ))
             .filter(resultado -> resultado != null)
             .sorted(comparador)
@@ -224,18 +240,31 @@ public class RecomendacaoProximoPickService {
             .skip(1)
             .limit(LIMITE_ALTERNATIVAS)
             .toList();
-        boolean ehMinhaVez = rodadaAtual.lado() == request.meuLado()
-            && rodadaAtual.ordens().contains(request.minhaOrdem());
-        String mensagem = ehMinhaVez
-            ? "É sua vez. A melhor escolha agora é "
-                + principal.heroi() + "."
-            : "Planejamento para seu próximo pick: "
-                + principal.heroi()
-                + ". A recomendação pode mudar após os picks anteriores.";
+
+        boolean vezAliada = rodadaAtual.lado() == request.meuLado();
+        boolean ehMinhaVez = vezAliada && recomendacaoParaUsuario;
+        String slotAlvo = request.meuLado().prefixoSlot() + ordemAlvoAliada;
+        String estadoDraft = ehMinhaVez
+            ? "MINHA_VEZ"
+            : vezAliada
+                ? "VEZ_ALIADA"
+                : "AGUARDANDO_INIMIGO";
+        String mensagem = switch (estadoDraft) {
+            case "MINHA_VEZ" ->
+                "É sua vez. A melhor escolha agora é "
+                    + principal.heroi() + ".";
+            case "VEZ_ALIADA" ->
+                "É a vez da sua equipe. Para " + slotAlvo
+                    + ", a melhor escolha é " + principal.heroi() + ".";
+            default ->
+                "O inimigo está escolhendo. Planejamento para "
+                    + slotAlvo + ": " + principal.heroi()
+                    + " lidera entre as opções aliadas.";
+        };
 
         return new RecomendacaoProximoPickResponse(
             VERSAO_MOTOR,
-            ehMinhaVez ? "MINHA_VEZ" : "PLANEJAMENTO",
+            estadoDraft,
             mensagem,
             ehMinhaVez,
             meuSlot(request),
@@ -268,6 +297,10 @@ public class RecomendacaoProximoPickService {
             List<Rota> rotasValidas = candidato.getRotasPossiveis()
                 .stream()
                 .filter(hipoteseAliada.rotasAbertas()::contains)
+                .filter(rota ->
+                    funcoesPreferidas.isEmpty()
+                        || funcoesPreferidas.contains(rota)
+                )
                 .toList();
 
             if (rotasValidas.isEmpty()) {
@@ -803,19 +836,27 @@ public class RecomendacaoProximoPickService {
             );
         }
 
-        Set<Long> bans = new HashSet<>();
-        validarBans(request.bansAzul(), "lado azul", bans);
-        validarBans(request.bansVermelho(), "lado vermelho", bans);
+        Set<Long> bansAzul = validarBans(
+            request.bansAzul(),
+            "lado azul"
+        );
+        Set<Long> bansVermelho = validarBans(
+            request.bansVermelho(),
+            "lado vermelho"
+        );
+        Set<Long> bans = new HashSet<>(bansAzul);
+        bans.addAll(bansVermelho);
 
         request.picksAzul().forEach(pick -> validarPickBanido(pick, bans));
         request.picksVermelho().forEach(pick -> validarPickBanido(pick, bans));
     }
 
-    private void validarBans(
+    private Set<Long> validarBans(
         List<Long> ids,
-        String lado,
-        Set<Long> bans
+        String lado
     ) {
+        Set<Long> bansDoLado = new HashSet<>();
+
         for (Long id : ids) {
             if (id == null || id <= 0) {
                 throw new RegraNegocioException(
@@ -824,13 +865,15 @@ public class RecomendacaoProximoPickService {
             }
 
             Heroi heroi = buscarHeroi(id);
-            if (!bans.add(id)) {
+            if (!bansDoLado.add(id)) {
                 throw new RegraNegocioException(
                     "O herói " + heroi.getNome()
-                        + " foi banido mais de uma vez."
+                        + " foi banido mais de uma vez pelo " + lado + "."
                 );
             }
         }
+
+        return bansDoLado;
     }
 
     private void validarPickBanido(
@@ -864,6 +907,27 @@ public class RecomendacaoProximoPickService {
                         .map(ordem -> rodada.lado().prefixoSlot() + ordem)
                         .toList()
                 );
+            }
+        }
+
+        return null;
+    }
+
+    private Integer proximaOrdemAliada(
+        RecomendacaoProximoPickRequest request
+    ) {
+        Map<Integer, Long> preenchidos = mapaPicks(
+            picks(request, request.meuLado())
+        );
+
+        for (RodadaPick rodada : RODADAS) {
+            if (rodada.lado() != request.meuLado()) {
+                continue;
+            }
+            for (Integer ordem : rodada.ordens()) {
+                if (!preenchidos.containsKey(ordem)) {
+                    return ordem;
+                }
             }
         }
 
